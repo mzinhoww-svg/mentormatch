@@ -18,14 +18,25 @@
 
 ## 2. Tenant resolution — por host
 
+O domínio base de produção é **configurável** por `APP_BASE_DOMAIN` (env), **não é
+hardcoded**. Abaixo, `D` = `APP_BASE_DOMAIN` (fallback seguro: `mentormatch.app`).
+
 | Contexto | Host | Comportamento |
 |---|---|---|
-| Produção | `{tenant}.mentormatch.app` | tenant resolvido **antes** do auth |
-| Institucional | `mentormatch.app` | landing pública; **sem** login de tenant |
-| Plataforma | `admin.mentormatch.app` | console Super Admin (identidade separada) |
+| Produção | `{tenant}.D` | tenant resolvido **antes** do auth |
+| Institucional | `D` / `www.D` | landing pública; **sem** login de tenant |
+| Plataforma | `admin.D` | console Super Admin (identidade separada) |
 | Custom domain (futuro) | `mentoria.empresa.com` | via `tenant_domain` |
-| Dev local | `{tenant}.localhost:3000` | mesma resolução (alt.: `*.lvh.me`) |
+| Dev local | `{tenant}.localhost:3000` | **sempre** disponível, independe de `D` |
 
+Ex.: com `APP_BASE_DOMAIN=mentorxmatch.xyz`, `acme.mentorxmatch.xyz` → TENANT `acme`;
+`mentorxmatch.xyz` → INSTITUTIONAL; `admin.mentorxmatch.xyz` → PLATFORM_ADMIN.
+
+- `APP_BASE_DOMAIN` é lido **em tempo de chamada** (`getBaseDomain()`), então mudar a
+  env no deploy passa a valer **sem rebuild**. `localhost` nunca é afetado.
+- `TENANT_DOMAIN_MODE` (`subdomain` | `path` | `custom`) é lido por
+  `getTenantDomainMode()`; hoje **só `subdomain` está implementado** (os demais são
+  reservados para evolução e se comportam como `subdomain`).
 - **Sem** `/login` global; **sem** `/:slug/login`. Auth ocorre dentro do host
   resolvido **e ativo**.
 - Resolução é uma **função pura host-based** + lookup de slug, com **blocklist** de

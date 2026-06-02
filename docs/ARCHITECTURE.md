@@ -66,8 +66,9 @@ The cross-cutting foundation, framework-agnostic and free of feature coupling.
 ## 4. Target product architecture (planned)
 
 - **Tenancy:** identity isolated per tenant (`TenantUser`, no global `User`/login);
-  host-based tenant resolution; RLS + application guard (`withTenant`), default-deny.
-  Full detail in [TENANCY.md](./TENANCY.md).
+  host-based tenant resolution with an **env-configurable base domain**
+  (`APP_BASE_DOMAIN`, not hardcoded; fallback `mentormatch.app`); RLS + application
+  guard (`withTenant`), default-deny. Full detail in [TENANCY.md](./TENANCY.md).
 - **Privacy/LGPD:** mandatory consent, ContactInfo hidden until accepted match,
   per-tenant deletion. See [LGPD.md](./LGPD.md).
 - **Domain (V1):** one default `Program` per tenant; manual matching (search +

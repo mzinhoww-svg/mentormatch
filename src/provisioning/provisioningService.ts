@@ -7,7 +7,7 @@
  * indistinguishable from data created by real usage. Idempotent on slug.
  */
 import { createTenant, findTenantBySlug, type TenantRecord } from '../tenancy/admin.js';
-import { RESERVED_SUBDOMAINS } from '../tenancy/resolveTenant.js';
+import { RESERVED_SUBDOMAINS, getBaseDomain } from '../tenancy/resolveTenant.js';
 import { signup, login } from '../auth/authService.js';
 import { upsertProfile, activateProfile, setMentorAvailable } from '../profile/profileService.js';
 import { createSkill, addUserSkill } from '../profile/skillService.js';
@@ -181,7 +181,7 @@ function summarize(
     tenant,
     host,
     loginUrlDev: `http://${host}:3000/login`,
-    loginUrlProd: `https://${tenant.slug}.mentormatch.app/login`,
+    loginUrlProd: `https://${tenant.slug}.${getBaseDomain()}/login`,
     password,
     admin,
     mentors,

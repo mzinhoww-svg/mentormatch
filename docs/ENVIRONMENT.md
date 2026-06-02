@@ -25,8 +25,8 @@
 | Variable | Required | Visibility | Scope (P/Prev/Dev) | Where to obtain | Usage in system | Security notes |
 |---|---|---|---|---|---|---|
 | `APP_ENV` | Required | Secret* | All | You choose: `development`/`preview`/`production` | Logical environment switch for app behavior/logging | Not sensitive, but keep server-side to avoid drift with `NODE_ENV`. |
-| `APP_BASE_DOMAIN` | Required | Secret* | All | You choose (e.g. `mentormatch.app`) | Root domain used to compose tenant URLs | Not secret; must match DNS/Vercel domains. |
-| `TENANT_DOMAIN_MODE` | Required | Secret* | All | You choose: `subdomain`/`path`/`custom` | Controls how a tenant is resolved from the request host | Must agree with routing + DNS config. |
+| `APP_BASE_DOMAIN` | Required | Secret* | All | You choose (e.g. `mentorxmatch.xyz`) | **Consumed by `resolveTenant.getBaseDomain()`** — base domain for tenant resolution & URLs. Fallback `mentormatch.app` if unset; read at call time (no rebuild). | Not secret; must match the wildcard DNS/Vercel domain (`*.APP_BASE_DOMAIN`). |
+| `TENANT_DOMAIN_MODE` | Required | Secret* | All | `subdomain` (only mode implemented) | Read by `resolveTenant.getTenantDomainMode()`; `path`/`custom` reserved, behave as `subdomain` for now. | Keep `subdomain` until the others ship. |
 | `NEXT_PUBLIC_APP_URL` | Required | **Public** | All | Your deployed URL (e.g. `https://mentormatch.app`) | Absolute base URL for links, callbacks, OG | Public by design; never put secrets in `NEXT_PUBLIC_*`. |
 | `AUTH_SECRET` | Required | Secret | All | Generate: `openssl rand -base64 32` | Signs/encrypts Auth.js session tokens | High-impact secret. Rotate carefully (invalidates sessions). |
 | `AUTH_TRUST_HOST` | Required | Secret* | Prod/Preview (`true`) | Set to `true` on Vercel | Lets Auth.js trust the proxied Host header | Keep `true` only behind a trusted proxy (Vercel). |
