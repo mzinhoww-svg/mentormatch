@@ -27,11 +27,11 @@ function normalizeName(name: string): string {
   return name.trim().toLowerCase();
 }
 
-function isUniqueViolation(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23505';
-}
-
-/** Creates (or returns the existing) skill for the tenant. */
+/**
+ * Creates (or returns the existing) skill for the tenant. Idempotent via
+ * ON CONFLICT DO UPDATE so a repeated name in the same transaction does not abort
+ * it (a failed INSERT would poison the surrounding withTenant transaction).
+ */
 export async function createSkill(
   tenantId: string,
   input: { name: string; category?: string },
@@ -40,23 +40,15 @@ export async function createSkill(
   if (!name) throw expectedError(ErrorCode.VALIDATION, 'skill_name_required');
   const normalized = normalizeName(name);
   return withTenant(tenantId, async (db) => {
-    try {
-      const res = await db.query<SkillRecord>(
-        `INSERT INTO skill (tenant_id, name, normalized_name, category)
-         VALUES ($1, $2, $3, $4) RETURNING id, name, category`,
-        [tenantId, name, normalized, input.category ?? null],
-      );
-      return res.rows[0]!;
-    } catch (err) {
-      if (isUniqueViolation(err)) {
-        const existing = await db.query<SkillRecord>(
-          'SELECT id, name, category FROM skill WHERE normalized_name = $1',
-          [normalized],
-        );
-        if (existing.rows[0]) return existing.rows[0];
-      }
-      throw err;
-    }
+    const res = await db.query<SkillRecord>(
+      `INSERT INTO skill (tenant_id, name, normalized_name, category)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tenant_id, normalized_name)
+       DO UPDATE SET category = COALESCE(EXCLUDED.category, skill.category)
+       RETURNING id, name, category`,
+      [tenantId, name, normalized, input.category ?? null],
+    );
+    return res.rows[0]!;
   });
 }
 
