@@ -1,0 +1,19 @@
+// MentorMatch — Prisma schema (baseline placeholder).
+//
+// Per ADR-002 (docs/ADR.md): PostgreSQL 16 with REAL Row Level Security; RLS lives
+// in versioned SQL migrations, NOT in this schema; Prisma always runs behind the
+// withTenantPrisma() helper. Domain models, RLS policies, the non-superuser app
+// role, and @prisma/client wiring land in the data-layer slice — intentionally
+// absent from the baseline so the repository builds without a database.
+//
+// See prisma/README.md for the full plan.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled — copy of POSTGRES_PRISMA_URL
+  directUrl = env("DIRECT_URL") // direct — copy of POSTGRES_URL_NON_POOLING
+}

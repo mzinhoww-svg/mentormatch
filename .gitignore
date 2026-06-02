@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+dist/
+out/
+
+# Test / coverage
+coverage/
+
+# TS incremental build info
+*.tsbuildinfo
+
+# Vercel
+.vercel/
+
+# Env files — keep only the template
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Temp / scratch
+tmp/
+.temp/
+uploads-temp/
+
+# Private / proprietary reference (never commit)
+raw-private/
+private-reference/
+latam-private-reference/
+
+# OS
+.DS_Store

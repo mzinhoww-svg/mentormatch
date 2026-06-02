@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MentorMatch — Dashboard</title>
+<link rel="stylesheet" href="../assets/brand.css">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="side-top"><a href="../index.html" style="text-decoration:none" data-mark="lockup" data-size="22" data-ink="#F4ECE0"></a></div>
+    <div class="role-switch">
+      <button class="role-btn active" data-role="admin"><span class="ri"></span> Admin · Pessoas</button>
+      <button class="role-btn" data-role="mentor"><span class="ri"></span> Mentor</button>
+      <button class="role-btn" data-role="mentorado"><span class="ri"></span> Mentorado</button>
+    </div>
+    <nav class="side-nav" id="sidenav"></nav>
+    <div class="side-user">
+      <div class="av" id="userav">MA</div>
+      <div><div class="nm" id="username">Marina Alves</div><div class="rl" id="userrole">Admin · Pessoas & Cultura</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="pgtitle">Visão geral</h1>
+        <div class="sub" id="pgsub">A corrente da Nordia, hoje</div>
+      </div>
+      <div class="top-actions">
+        <div class="search">⌕ Buscar pessoas, trilhas…</div>
+        <div class="icon-btn">◷<span class="badge"></span></div>
+        <button class="btn btn-primary" style="padding:9px 18px;font-size:14px">+ Nova conexão</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== ADMIN ===== -->
+      <section class="role-view active" data-screen-label="Dashboard · Admin" id="view-admin">
+        <div class="grid-4" style="margin-bottom:16px">
+          <div class="card stat"><div class="k">Conexões ativas</div><div class="v">312</div><div class="d up">↑ 18% no mês</div></div>
+          <div class="card stat"><div class="k">Horas circuladas</div><div class="v">1.284</div><div class="d up">↑ 9% no mês</div></div>
+          <div class="card stat"><div class="k">Retenção (mentorados)</div><div class="v">92%</div><div class="d up">↑ 4 pts</div></div>
+          <div class="card stat"><div class="k">Mentores ativos</div><div class="v">86</div><div class="d dn">↓ 2 vs. meta</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-h"><h3>Conhecimento em circulação</h3><span class="lnk">Últimos 6 meses ▾</span></div>
+            <div class="chart">
+              <div class="col"><div class="bar" style="height:42%"></div><div class="lab">Jan</div></div>
+              <div class="col"><div class="bar" style="height:55%"></div><div class="lab">Fev</div></div>
+              <div class="col"><div class="bar" style="height:50%"></div><div class="lab">Mar</div></div>
+              <div class="col"><div class="bar" style="height:72%"></div><div class="lab">Abr</div></div>
+              <div class="col"><div class="bar" style="height:84%"></div><div class="lab">Mai</div></div>
+              <div class="col hi"><div class="bar" style="height:100%"></div><div class="lab">Jun</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Programas</h3><span class="lnk">Ver todos</span></div>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px"><b>Liderança técnica</b><span style="color:var(--muted)">74%</span></div><div class="prog"><span style="width:74%"></span></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px"><b>Onboarding 90 dias</b><span style="color:var(--muted)">61%</span></div><div class="prog"><span style="width:61%;background:var(--jade-500)"></span></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px"><b>Mulheres em produto</b><span style="color:var(--muted)">88%</span></div><div class="prog"><span style="width:88%"></span></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px"><b>Vendas consultivas</b><span style="color:var(--muted)">43%</span></div><div class="prog"><span style="width:43%;background:var(--jade-500)"></span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card pad0" style="margin-top:16px">
+          <div class="card-h" style="padding:18px 20px 0;margin-bottom:8px"><h3>Conexões recentes</h3><span class="lnk">Exportar</span></div>
+          <div class="row-item"><div class="av" style="background:var(--brasa-500)">JC</div><div style="flex:1"><div class="nm">João Carvalho → Marina Alves</div><div class="ds">Liderança técnica · iniciada há 2 dias</div></div><span class="tag green">No ritmo</span></div>
+          <div class="row-item"><div class="av" style="background:var(--jade-600)">AM</div><div style="flex:1"><div class="nm">Ana Moraes → Pedro Lima</div><div class="ds">Negociação · iniciada há 5 dias</div></div><span class="tag ember">Aguardando 1ª sessão</span></div>
+          <div class="row-item"><div class="av" style="background:var(--tinta-700)">RS</div><div style="flex:1"><div class="nm">Rafael Souza → Marina Alves</div><div class="ds">Carreira · 3 sessões concluídas</div></div><span class="tag green">No ritmo</span></div>
+          <div class="row-item"><div class="av" style="background:var(--brasa-600)">LT</div><div style="flex:1"><div class="nm">Letícia Tavares → Bruno Reis</div><div class="ds">Onboarding 90 dias · há 1 semana</div></div><span class="tag gray">Concluída</span></div>
+        </div>
+      </section>
+
+      <!-- ===== MENTOR ===== -->
+      <section class="role-view" data-screen-label="Dashboard · Mentor" id="view-mentor">
+        <div class="grid-4" style="margin-bottom:16px">
+          <div class="card stat"><div class="k">Mentorados</div><div class="v">9</div><div class="d up">2 novos este mês</div></div>
+          <div class="card stat"><div class="k">Horas doadas</div><div class="v">47</div><div class="d up">↑ 6 no mês</div></div>
+          <div class="card stat"><div class="k">Reconhecimento</div><div class="v">★ 4.9</div><div class="d up">de 38 avaliações</div></div>
+          <div class="card stat"><div class="k">Trilhas concluídas</div><div class="v">14</div><div class="d up">por seus mentorados</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card pad0">
+            <div class="card-h" style="padding:18px 20px 0;margin-bottom:8px"><h3>Seus mentorados</h3><span class="lnk">Gerenciar</span></div>
+            <div class="row-item"><div class="av" style="background:var(--brasa-500)">JC</div><div style="flex:1"><div class="nm">João Carvalho</div><div class="ds">Meta: liderar um squad em 6 meses</div></div><button class="btn-sm">Abrir</button></div>
+            <div class="row-item"><div class="av" style="background:var(--jade-600)">AM</div><div style="flex:1"><div class="nm">Ana Moraes</div><div class="ds">Meta: transição para staff eng</div></div><button class="btn-sm ghost">Abrir</button></div>
+            <div class="row-item"><div class="av" style="background:var(--tinta-700)">RS</div><div style="flex:1"><div class="nm">Rafael Souza</div><div class="ds">Meta: clareza de carreira</div></div><button class="btn-sm ghost">Abrir</button></div>
+            <div class="row-item"><div class="av" style="background:var(--brasa-600)">DK</div><div style="flex:1"><div class="nm">Diana Klein</div><div class="ds">Meta: falar em público</div></div><button class="btn-sm ghost">Abrir</button></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Próximas sessões</h3></div>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;gap:12px;align-items:center"><div style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--brasa-600);line-height:1.1"><b style="font-size:18px;display:block">15</b>QUI</div><div><div style="font-size:13px;font-weight:600">João Carvalho</div><div style="font-size:12px;color:var(--muted)">15h00 · Liderança técnica</div></div></div>
+              <div style="display:flex;gap:12px;align-items:center;opacity:.85"><div style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.1"><b style="font-size:18px;display:block">17</b>SÁB</div><div><div style="font-size:13px;font-weight:600">Ana Moraes</div><div style="font-size:12px;color:var(--muted)">10h00 · Revisão de metas</div></div></div>
+              <div style="display:flex;gap:12px;align-items:center;opacity:.85"><div style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.1"><b style="font-size:18px;display:block">21</b>QUA</div><div><div style="font-size:13px;font-weight:600">Diana Klein</div><div style="font-size:12px;color:var(--muted)">16h30 · Feedback de pitch</div></div></div>
+            </div>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line)" class="session-hero"><div class="lab">A corrente continua</div><div style="font-size:14px;color:var(--argila-200);margin-top:8px">Você já multiplicou conhecimento para <b style="color:#fff">9 pessoas</b>. Elas, juntas, já mentoraram outras <b style="color:var(--brasa-400)">4</b>.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MENTORADO ===== -->
+      <section class="role-view" data-screen-label="Dashboard · Mentorado" id="view-mentorado">
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="session-hero">
+            <div style="position:absolute;right:-46px;top:0;opacity:.10;pointer-events:none"><div data-mark="corrente" data-size="170" data-ink="#fff" data-accent="#FF6E45"></div></div>
+            <div style="position:relative;z-index:1">
+            <div class="lab">Sua corrente de hoje</div>
+            <h2 style="max-width:13ch">Sessão com Marina Alves</h2>
+            <div style="font-size:14px;color:var(--argila-300)">Negociação & influência · hoje, 14h00</div>
+            <div style="display:flex;gap:10px;margin-top:20px"><button class="btn btn-primary" style="padding:11px 22px">Entrar na sessão →</button><button class="btn" style="background:rgba(255,255,255,.14);color:#fff;padding:11px 18px">Reagendar</button></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Trilha: Liderança</h3><span class="tag ember">62%</span></div>
+            <div class="prog" style="margin-bottom:16px"><span style="width:62%"></span></div>
+            <div style="display:flex;flex-direction:column;gap:11px;font-size:13px">
+              <div style="display:flex;gap:10px;align-items:center"><span style="color:var(--jade-600)">✓</span> Dar e receber feedback</div>
+              <div style="display:flex;gap:10px;align-items:center"><span style="color:var(--jade-600)">✓</span> Delegar com clareza</div>
+              <div style="display:flex;gap:10px;align-items:center;font-weight:600"><span style="color:var(--brasa-500)">●</span> Negociação & influência</div>
+              <div style="display:flex;gap:10px;align-items:center;color:var(--muted)"><span>○</span> Liderar sem autoridade</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-h" style="margin:24px 4px 14px"><h3 style="font-size:17px">Mentores sugeridos para suas próximas metas</h3><span class="lnk">Ver todos</span></div>
+        <div class="mentor-grid">
+          <div class="mcard"><div class="av" style="background:var(--brasa-500)">BR</div><div class="nm" style="font-weight:700;font-size:15px">Bruno Reis</div><div class="ds" style="font-size:12px;color:var(--muted)">Diretor de Produto</div><div class="skills"><span class="tag gray">Estratégia</span><span class="tag gray">OKRs</span></div><button class="btn-sm" style="width:100%">Conectar</button></div>
+          <div class="mcard"><div class="av" style="background:var(--jade-600)">SC</div><div class="nm" style="font-weight:700;font-size:15px">Sofia Castro</div><div class="ds" style="font-size:12px;color:var(--muted)">Eng. Principal</div><div class="skills"><span class="tag gray">Arquitetura</span><span class="tag gray">Mentoria</span></div><button class="btn-sm ghost" style="width:100%">Conectar</button></div>
+          <div class="mcard"><div class="av" style="background:var(--tinta-700)">PL</div><div class="nm" style="font-weight:700;font-size:15px">Pedro Lima</div><div class="ds" style="font-size:12px;color:var(--muted)">Head de Vendas</div><div class="skills"><span class="tag gray">Negociação</span><span class="tag gray">Pitch</span></div><button class="btn-sm ghost" style="width:100%">Conectar</button></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script src="../assets/marks.js"></script>
+<script>
+document.querySelectorAll('[data-mark]').forEach(el=>{const fn=el.dataset.mark,size=+el.dataset.size||64,ink=el.dataset.ink,accent=el.dataset.accent;if(mm[fn])el.innerHTML=mm[fn]({size,ink,accent});});
+
+const NAV = {
+  admin: {title:'Visão geral', sub:'A corrente da Nordia, hoje', user:['MA','Marina Alves','Admin · Pessoas & Cultura'], items:['Visão geral','Conexões','Programas','Pessoas','Relatórios']},
+  mentor: {title:'Seu painel de mentor', sub:'9 mentorados em circulação', user:['MA','Marina Alves','Mentora · Produto'], items:['Painel','Mentorados','Sessões','Trilhas','Reconhecimento']},
+  mentorado: {title:'Sua jornada', sub:'Trilha de Liderança · 62%', user:['JC','João Carvalho','Mentorado · Engenharia'], items:['Minha jornada','Meu mentor','Trilhas','Descobrir','Conquistas']}
+};
+const sidenav=document.getElementById('sidenav');
+function renderNav(role){
+  const d=NAV[role];
+  document.getElementById('pgtitle').textContent=d.title;
+  document.getElementById('pgsub').textContent=d.sub;
+  document.getElementById('userav').textContent=d.user[0];
+  document.getElementById('username').textContent=d.user[1];
+  document.getElementById('userrole').textContent=d.user[2];
+  sidenav.innerHTML='<div class="side-lbl">Navegação</div>'+d.items.map((t,i)=>`<a class="nav-item${i===0?' active':''}"><span class="dot"></span>${t}</a>`).join('');
+}
+function setRole(role){
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.toggle('active',b.dataset.role===role));
+  document.querySelectorAll('.role-view').forEach(v=>v.classList.toggle('active',v.id==='view-'+role));
+  renderNav(role);
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.role-btn').forEach(b=>b.addEventListener('click',()=>setRole(b.dataset.role)));
+renderNav('admin');
+// delegação: clicar item de nav apenas destaca
+sidenav.addEventListener('click',e=>{const it=e.target.closest('.nav-item');if(!it)return;sidenav.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));it.classList.add('active');});
+</script>
+</body>
+</html>
