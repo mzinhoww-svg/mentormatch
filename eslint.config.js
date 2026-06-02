@@ -27,4 +27,11 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Node scripts (plain ESM) — provide Node globals so no-undef passes.
+    files: ['**/*.mjs', 'scripts/**'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly', URL: 'readonly' },
+    },
+  },
 );
