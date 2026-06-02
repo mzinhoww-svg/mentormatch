@@ -7,6 +7,7 @@ import { withTenant } from '../tenancy/withTenant.js';
 import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
 import { recordProfileEvent } from './audit.js';
+import { safeNotify } from '../notifications/notificationService.js';
 import { deriveRoles, type DerivedRoles } from './roles.js';
 import { listUserSkills, type UserSkillRecord } from './skillService.js';
 
@@ -64,6 +65,12 @@ export async function upsertProfile(
     return res.rows[0]!;
   });
   await recordProfileEvent(tenantId, 'profile.updated', { actorId: userId });
+  await safeNotify(tenantId, {
+    type: 'profile.updated',
+    targetUserId: userId,
+    originEvent: 'profile.updated',
+    payload: {},
+  });
   return profile;
 }
 

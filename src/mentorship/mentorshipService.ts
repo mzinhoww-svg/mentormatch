@@ -7,6 +7,7 @@ import { withTenant, type TenantDb } from '../tenancy/withTenant.js';
 import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
 import { recordMentorshipEvent } from './audit.js';
+import { safeNotify } from '../notifications/notificationService.js';
 import { decideInitialStatus, isOpenForDecision, type RequestStatus } from './rules.js';
 
 const DEFAULT_EXPIRY_DAYS = 14;
@@ -95,6 +96,13 @@ export async function requestMentorship(
     targetType: 'tenant_user',
     metadata: { requestId: request.id, status: request.status },
   });
+  // Notify the mentor that a request arrived (no ContactInfo in payload).
+  await safeNotify(tenantId, {
+    type: 'mentorship.requested',
+    targetUserId: input.mentorId,
+    originEvent: 'mentorship.requested',
+    payload: { requestId: request.id, status: request.status },
+  });
   return request;
 }
 
@@ -146,6 +154,13 @@ export async function acceptRequest(
     targetType: 'tenant_user',
     metadata: { requestId, mentorshipId: result.mentorshipId },
   });
+  // Notify the mentee that their request was accepted.
+  await safeNotify(tenantId, {
+    type: 'mentorship.accepted',
+    targetUserId: result.menteeId,
+    originEvent: 'mentorship.accepted',
+    payload: { requestId, mentorshipId: result.mentorshipId },
+  });
   return result;
 }
 
@@ -175,6 +190,13 @@ export async function rejectRequest(
     targetId: menteeId,
     targetType: 'tenant_user',
     metadata: { requestId },
+  });
+  // Notify the mentee that their request was rejected.
+  await safeNotify(tenantId, {
+    type: 'mentorship.rejected',
+    targetUserId: menteeId,
+    originEvent: 'mentorship.rejected',
+    payload: { requestId },
   });
 }
 
@@ -277,4 +299,16 @@ export async function setMentorCapacity(
       [tenantId, userId, value],
     ),
   );
+  await recordMentorshipEvent(tenantId, 'profile.capacity_changed', {
+    actorId: userId,
+    targetType: 'profile',
+    metadata: { capacity: value },
+  });
+  // Notify the mentor that their capacity changed.
+  await safeNotify(tenantId, {
+    type: 'profile.capacity_changed',
+    targetUserId: userId,
+    originEvent: 'profile.capacity_changed',
+    payload: { capacity: value },
+  });
 }

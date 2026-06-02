@@ -9,7 +9,9 @@ import { withTenant, type TenantDb } from '../tenancy/withTenant.js';
 import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
 import { recordSessionEvent } from './audit.js';
+import { safeNotify } from '../notifications/notificationService.js';
 import { canCancel, canComplete, canConfirm, type SessionStatus } from './rules.js';
+import type { NotificationType } from '../notifications/types.js';
 
 export interface SessionRecord {
   id: string;
@@ -46,6 +48,26 @@ function assertParticipant(m: MentorshipParticipants, actorId: string): void {
   }
 }
 
+/** The participant who is NOT the actor — the one to notify. */
+function counterpartOf(m: MentorshipParticipants, actorId: string): string {
+  return actorId === m.mentorId ? m.menteeId : m.mentorId;
+}
+
+/** Notifies the actor's counterpart about a session event (no ContactInfo). */
+async function notifyCounterpart(
+  tenantId: string,
+  type: NotificationType,
+  counterpartId: string,
+  sessionId: string,
+): Promise<void> {
+  await safeNotify(tenantId, {
+    type,
+    targetUserId: counterpartId,
+    originEvent: type,
+    payload: { sessionId },
+  });
+}
+
 /** Loads a session and its mentorship participants, asserting actor membership. */
 async function loadSessionForActor(
   db: TenantDb,
@@ -79,7 +101,7 @@ export async function requestSession(
     throw expectedError(ErrorCode.VALIDATION, 'scheduled_at_required');
   }
 
-  const session = await withTenant(tenantId, async (db) => {
+  const { session, counterpartId } = await withTenant(tenantId, async (db) => {
     const m = await loadMentorship(db, input.mentorshipId);
     if (!m) throw expectedError(ErrorCode.NOT_FOUND, 'mentorship_not_found');
     // Sessions can only exist for an ACTIVE mentorship.
@@ -102,7 +124,7 @@ export async function requestSession(
        RETURNING ${SELECT_SESSION}`,
       [tenantId, input.mentorshipId, actorId, input.scheduledAt, input.objective ?? null],
     );
-    return inserted.rows[0]!;
+    return { session: inserted.rows[0]!, counterpartId: counterpartOf(m, actorId) };
   });
 
   await recordSessionEvent(tenantId, 'session.requested', {
@@ -110,6 +132,7 @@ export async function requestSession(
     targetId: session.id,
     metadata: { mentorshipId: session.mentorshipId, scheduledAt: session.scheduledAt },
   });
+  await notifyCounterpart(tenantId, 'session.requested', counterpartId, session.id);
   return session;
 }
 
@@ -118,15 +141,17 @@ export async function confirmSession(
   actorId: string,
   sessionId: string,
 ): Promise<void> {
-  await withTenant(tenantId, async (db) => {
-    const { status } = await loadSessionForActor(db, sessionId, actorId);
+  const counterpartId = await withTenant(tenantId, async (db) => {
+    const { status, m } = await loadSessionForActor(db, sessionId, actorId);
     if (!canConfirm(status)) throw expectedError(ErrorCode.VALIDATION, 'session_not_confirmable');
     await db.query(
       "UPDATE mentorship_session SET status = 'confirmed', confirmed_at = now() WHERE id = $1",
       [sessionId],
     );
+    return counterpartOf(m, actorId);
   });
   await recordSessionEvent(tenantId, 'session.confirmed', { actorId, targetId: sessionId });
+  await notifyCounterpart(tenantId, 'session.confirmed', counterpartId, sessionId);
 }
 
 export async function completeSession(
@@ -135,15 +160,17 @@ export async function completeSession(
   sessionId: string,
   notes?: string,
 ): Promise<void> {
-  await withTenant(tenantId, async (db) => {
-    const { status } = await loadSessionForActor(db, sessionId, actorId);
+  const counterpartId = await withTenant(tenantId, async (db) => {
+    const { status, m } = await loadSessionForActor(db, sessionId, actorId);
     if (!canComplete(status)) throw expectedError(ErrorCode.VALIDATION, 'session_not_completable');
     await db.query(
       "UPDATE mentorship_session SET status = 'completed', completed_at = now(), notes = COALESCE($2, notes) WHERE id = $1",
       [sessionId, notes ?? null],
     );
+    return counterpartOf(m, actorId);
   });
   await recordSessionEvent(tenantId, 'session.completed', { actorId, targetId: sessionId });
+  await notifyCounterpart(tenantId, 'session.completed', counterpartId, sessionId);
 }
 
 export async function cancelSession(
@@ -152,15 +179,17 @@ export async function cancelSession(
   sessionId: string,
   reason?: string,
 ): Promise<void> {
-  await withTenant(tenantId, async (db) => {
-    const { status } = await loadSessionForActor(db, sessionId, actorId);
+  const counterpartId = await withTenant(tenantId, async (db) => {
+    const { status, m } = await loadSessionForActor(db, sessionId, actorId);
     if (!canCancel(status)) throw expectedError(ErrorCode.VALIDATION, 'session_not_cancellable');
     await db.query(
       "UPDATE mentorship_session SET status = 'cancelled', cancelled_at = now(), cancel_reason = $2 WHERE id = $1",
       [sessionId, reason ?? null],
     );
+    return counterpartOf(m, actorId);
   });
   await recordSessionEvent(tenantId, 'session.cancelled', { actorId, targetId: sessionId });
+  await notifyCounterpart(tenantId, 'session.cancelled', counterpartId, sessionId);
 }
 
 /** Lists sessions for mentorships the user participates in. */

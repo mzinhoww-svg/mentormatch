@@ -11,6 +11,7 @@ import { resolveActiveTenant } from '../tenancy/admin.js';
 import { withTenant } from '../tenancy/withTenant.js';
 import { hashPassword, verifyPassword } from './password.js';
 import { recordAuthEvent } from './audit.js';
+import { safeNotify } from '../notifications/notificationService.js';
 import { createResetToken, verifyResetToken } from './session.js';
 import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
@@ -94,6 +95,13 @@ export async function signup(input: SignupInput): Promise<AuthedUser> {
       userAgent: input.userAgent,
       requestId: input.requestId,
     });
+    // Consent was recorded atomically above — surface it as a notification.
+    await safeNotify(tenantId, {
+      type: 'consent.recorded',
+      targetUserId: user.id,
+      originEvent: 'consent.recorded',
+      payload: { termsVersion: CURRENT_TERMS_VERSION },
+    });
     return { id: user.id, tenantId, role: user.role };
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -133,6 +141,13 @@ export async function login(input: LoginInput): Promise<AuthedUser> {
     userAgent: input.userAgent,
     requestId: input.requestId,
   });
+  // Security notification (no credentials / no ContactInfo in payload).
+  await safeNotify(tenantId, {
+    type: 'auth.login',
+    targetUserId: row.id,
+    originEvent: 'auth.login',
+    payload: {},
+  });
   return { id: row.id, tenantId, role: row.role };
 }
 
@@ -146,6 +161,12 @@ export async function logout(
     ip: ctx.ip,
     userAgent: ctx.userAgent,
     requestId: ctx.requestId,
+  });
+  await safeNotify(tenantId, {
+    type: 'auth.logout',
+    targetUserId: userId,
+    originEvent: 'auth.logout',
+    payload: {},
   });
 }
 

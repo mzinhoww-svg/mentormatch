@@ -33,6 +33,8 @@ model Tenant {
   requests    MentorshipRequest[]
   mentorships Mentorship[]
   sessions    MentorshipSession[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
 
   @@map("tenant")
 }
@@ -74,6 +76,8 @@ model TenantUser {
   requestsAsMentor    MentorshipRequest[] @relation("RequestMentor")
   mentorshipsAsMentor Mentorship[]        @relation("MentorshipMentor")
   mentorshipsAsMentee Mentorship[]        @relation("MentorshipMentee")
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
 
   @@unique([tenantId, normalizedEmail])
   @@unique([tenantId, id])
@@ -252,4 +256,41 @@ model MentorshipSession {
   @@index([tenantId, mentorshipId])
   @@index([tenantId, status])
   @@map("mentorship_session")
+}
+
+model Notification {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  targetUserId  String    @map("target_user_id") @db.Uuid
+  type          String
+  payload       Json      @default("{}")
+  status        String    @default("unread")
+  originEvent   String    @map("origin_event")
+  originAuditId String?   @map("origin_audit_id") @db.Uuid
+  emailStatus   String    @default("none") @map("email_status")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt        DateTime? @map("read_at") @db.Timestamptz(6)
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  target TenantUser @relation(fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, targetUserId, status])
+  @@index([tenantId, createdAt])
+  @@map("notification")
+}
+
+model NotificationPreference {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  tenantUserId String   @map("tenant_user_id") @db.Uuid
+  type         String
+  inApp        Boolean  @default(true) @map("in_app")
+  email        Boolean  @default(false)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, tenantUserId, type], map: "uq_pref")
+  @@map("notification_preference")
 }

@@ -10,7 +10,8 @@ export type MentorshipAction =
   | 'mentorship.accepted'
   | 'mentorship.rejected'
   | 'mentorship.cancelled'
-  | 'contact_info.revealed';
+  | 'contact_info.revealed'
+  | 'profile.capacity_changed';
 
 export async function recordMentorshipEvent(
   tenantId: string,
