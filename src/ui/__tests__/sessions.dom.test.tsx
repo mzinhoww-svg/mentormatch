@@ -26,6 +26,25 @@ describe('SessionsView (proof 6: sessions appear & change status)', () => {
   });
 });
 
+describe('SessionsView (Slice 12: rate a completed session)', () => {
+  it('shows 1-5 rating on completed sessions and posts session feedback', async () => {
+    const mock = installFetch({
+      'GET /api/mentorship/sessions': {
+        body: { sessions: [{ id: 's9', mentorshipId: 'ms1', scheduledAt: '2026-07-01T10:00:00.000Z', objective: 'x', status: 'completed' }] },
+      },
+      'GET /api/mentorship/mentorships': { body: { mentorships: [] } },
+      'POST /api/feedback/session': { status: 201, body: { ok: true, feedback: { id: 'f1', score: 5 } } },
+    });
+    render(<SessionsView />);
+    await screen.findByText('completed');
+    fireEvent.click(screen.getByRole('button', { name: 'Nota 5' }));
+    await waitFor(() => expect(calledWith(mock, 'POST', '/api/feedback/session')).toBe(true));
+    const call = mock.calls.find((c) => c.path === '/api/feedback/session');
+    expect(call?.body).toMatchObject({ sessionId: 's9', score: 5 });
+    expect(await screen.findByTestId('rated')).toBeTruthy();
+  });
+});
+
 describe('SessionsView (create session)', () => {
   it('posts a new session', async () => {
     const mock = installFetch({

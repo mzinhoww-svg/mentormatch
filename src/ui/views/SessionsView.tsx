@@ -117,11 +117,42 @@ export function SessionsView() {
                     Cancelar
                   </button>
                 ) : null}
+                {s.status === 'completed' ? <RateSession sessionId={s.id} /> : null}
               </span>
             </div>
           ))
         )}
       </div>
     </div>
+  );
+}
+
+/** Minimal 1–5 post-session rating that posts session feedback (Slice 12). */
+function RateSession({ sessionId }: { sessionId: string }) {
+  const [done, setDone] = useState<number | null>(null);
+  async function rate(score: number) {
+    try {
+      await api.post('/api/feedback/session', { sessionId, score });
+      setDone(score);
+    } catch {
+      setDone(null);
+    }
+  }
+  if (done !== null) {
+    return (
+      <span className="tag tag-green" data-testid="rated">
+        Avaliado: {done}/5
+      </span>
+    );
+  }
+  return (
+    <span style={{ display: 'flex', gap: 4, alignItems: 'center' }} aria-label="Avaliar sessão">
+      <span className="muted" style={{ fontSize: 12 }}>Avaliar:</span>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} className="btn btn-ghost btn-sm" onClick={() => rate(n)} aria-label={`Nota ${n}`}>
+          {n}
+        </button>
+      ))}
+    </span>
   );
 }

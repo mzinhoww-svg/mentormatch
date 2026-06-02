@@ -38,6 +38,7 @@ model Tenant {
   programs            Program[]
   programParticipants ProgramParticipant[]
   settings            TenantSettings?
+  feedback            Feedback[]
 
   @@map("tenant")
 }
@@ -82,6 +83,7 @@ model TenantUser {
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
   programParticipations   ProgramParticipant[]
+  feedbackAuthored        Feedback[]
 
   @@unique([tenantId, normalizedEmail])
   @@unique([tenantId, id])
@@ -354,4 +356,26 @@ model TenantSettings {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("tenant_settings")
+}
+
+model Feedback {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  authorId     String   @map("author_id") @db.Uuid
+  feedbackType String   @map("feedback_type")
+  targetType   String   @map("target_type")
+  targetId     String   @map("target_id") @db.Uuid
+  mentorshipId String?  @map("mentorship_id") @db.Uuid
+  score        Int
+  comment      String?
+  status       String   @default("submitted")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author TenantUser @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, targetType, targetId])
+  @@index([tenantId, authorId])
+  @@map("feedback")
 }
