@@ -35,6 +35,8 @@ model Tenant {
   sessions    MentorshipSession[]
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
+  programs            Program[]
+  programParticipants ProgramParticipant[]
 
   @@map("tenant")
 }
@@ -78,6 +80,7 @@ model TenantUser {
   mentorshipsAsMentee Mentorship[]        @relation("MentorshipMentee")
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
+  programParticipations   ProgramParticipant[]
 
   @@unique([tenantId, normalizedEmail])
   @@unique([tenantId, id])
@@ -293,4 +296,41 @@ model NotificationPreference {
 
   @@unique([tenantId, tenantUserId, type], map: "uq_pref")
   @@map("notification_preference")
+}
+
+model Program {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String
+  description String?
+  status      String   @default("active")
+  isDefault   Boolean  @default(false) @map("is_default")
+  capacity    Int?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  participants ProgramParticipant[]
+
+  @@unique([tenantId, id], map: "uq_program_tenant_id")
+  @@index([tenantId])
+  @@map("program")
+}
+
+model ProgramParticipant {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  programId     String   @map("program_id") @db.Uuid
+  tenantUserId  String   @map("tenant_user_id") @db.Uuid
+  roleInProgram String   @default("member") @map("role_in_program")
+  status        String   @default("active")
+  joinedAt      DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  program Program    @relation(fields: [tenantId, programId], references: [tenantId, id], onDelete: Cascade)
+  user    TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, programId, tenantUserId], map: "uq_participant")
+  @@index([tenantId, programId])
+  @@map("program_participant")
 }

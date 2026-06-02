@@ -9,6 +9,7 @@
 
 import { appPool, ownerPool } from './pool.js';
 import { resolveTenantFromHost, type TenantResolution } from './resolveTenant.js';
+import { ensureDefaultProgram } from '../program/programService.js';
 
 export interface TenantRecord {
   id: string;
@@ -25,6 +26,8 @@ export async function createTenant(input: { slug: string; name: string }): Promi
   );
   const row = res.rows[0];
   if (!row) throw new Error('createTenant: insert returned no row');
+  // Every tenant has a default mentoring program from the start.
+  await ensureDefaultProgram(row.id);
   return row;
 }
 
