@@ -32,6 +32,7 @@ model Tenant {
   goals       DevelopmentGoal[]
   requests    MentorshipRequest[]
   mentorships Mentorship[]
+  sessions    MentorshipSession[]
 
   @@map("tenant")
 }
@@ -219,11 +220,36 @@ model Mentorship {
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   endedAt   DateTime? @map("ended_at") @db.Timestamptz(6)
 
-  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  mentor TenantUser @relation("MentorshipMentor", fields: [mentorId], references: [id], onDelete: Cascade)
-  mentee TenantUser @relation("MentorshipMentee", fields: [menteeId], references: [id], onDelete: Cascade)
+  tenant   Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mentor   TenantUser           @relation("MentorshipMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentee   TenantUser           @relation("MentorshipMentee", fields: [menteeId], references: [id], onDelete: Cascade)
+  sessions MentorshipSession[]
 
+  @@unique([tenantId, id], map: "uq_mentorship_tenant_id")
   @@index([tenantId, mentorId])
   @@index([tenantId, menteeId])
   @@map("mentorship")
+}
+
+model MentorshipSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  mentorshipId String    @map("mentorship_id") @db.Uuid
+  requestedBy  String    @map("requested_by") @db.Uuid
+  scheduledAt  DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  objective    String?
+  notes        String?
+  status       String    @default("requested")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  confirmedAt  DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
+  cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason String?   @map("cancel_reason")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mentorship Mentorship @relation(fields: [tenantId, mentorshipId], references: [tenantId, id], onDelete: Cascade)
+
+  @@index([tenantId, mentorshipId])
+  @@index([tenantId, status])
+  @@map("mentorship_session")
 }
