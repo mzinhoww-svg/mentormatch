@@ -14,7 +14,9 @@
     "test:unit": "vitest run --exclude \"**/*.integration.test.ts\"",
     "test:integration": "vitest run integration",
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
-    "prisma:validate": "prisma validate"
+    "prisma:validate": "prisma validate",
+    "provision": "tsx src/provisioning/cli.ts",
+    "seed:demo": "tsx src/provisioning/cli.ts --slug acme --name \"Acme (Demo)\""
   },
   "dependencies": {
     "next": "^15.1.0",
@@ -34,6 +36,7 @@
     "eslint": "^9.13.0",
     "happy-dom": "^15.11.7",
     "prisma": "^5.22.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.11.0",
     "vitest": "^2.1.0"

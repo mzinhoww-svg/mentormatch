@@ -22,10 +22,10 @@ describe('ProfileView (proof 3: loads & saves)', () => {
     });
     render(<ProfileView />);
 
-    // Loaded: existing skill + form value present.
+    // Loaded: existing skill + form value populated (wait for the effect to fill it).
     expect(await screen.findByText('React')).toBeTruthy();
-    const title = screen.getByLabelText('Cargo') as HTMLInputElement;
-    expect(title.value).toBe('Eng');
+    const title = (await screen.findByDisplayValue('Eng')) as HTMLInputElement;
+    expect(title).toBe(screen.getByLabelText('Cargo'));
 
     fireEvent.change(title, { target: { value: 'Staff Eng' } });
     fireEvent.click(screen.getByRole('button', { name: /salvar perfil/i }));
