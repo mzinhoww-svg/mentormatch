@@ -30,6 +30,8 @@ model Tenant {
   skills      Skill[]
   userSkills  UserSkill[]
   goals       DevelopmentGoal[]
+  requests    MentorshipRequest[]
+  mentorships Mentorship[]
 
   @@map("tenant")
 }
@@ -62,11 +64,15 @@ model TenantUser {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  consents ConsentRecord[]
-  profile  Profile?
-  skills   UserSkill[]
-  goals    DevelopmentGoal[]
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  consents            ConsentRecord[]
+  profile             Profile?
+  skills              UserSkill[]
+  goals               DevelopmentGoal[]
+  requestsAsMentee    MentorshipRequest[] @relation("RequestMentee")
+  requestsAsMentor    MentorshipRequest[] @relation("RequestMentor")
+  mentorshipsAsMentor Mentorship[]        @relation("MentorshipMentor")
+  mentorshipsAsMentee Mentorship[]        @relation("MentorshipMentee")
 
   @@unique([tenantId, normalizedEmail])
   @@unique([tenantId, id])
@@ -120,6 +126,7 @@ model Profile {
   status          String   @default("inactive")
   mentorAvailable Boolean  @default(false) @map("mentor_available")
   mentorPaused    Boolean  @default(false) @map("mentor_paused")
+  mentorCapacity  Int      @default(3) @map("mentor_capacity")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -179,4 +186,44 @@ model DevelopmentGoal {
 
   @@index([tenantId])
   @@map("development_goal")
+}
+
+model MentorshipRequest {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  menteeId  String    @map("mentee_id") @db.Uuid
+  mentorId  String    @map("mentor_id") @db.Uuid
+  skillId   String?   @map("skill_id") @db.Uuid
+  message   String?
+  status    String    @default("pending")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(6)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mentee TenantUser @relation("RequestMentee", fields: [menteeId], references: [id], onDelete: Cascade)
+  mentor TenantUser @relation("RequestMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, mentorId])
+  @@index([tenantId, menteeId])
+  @@map("mentorship_request")
+}
+
+model Mentorship {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  mentorId  String    @map("mentor_id") @db.Uuid
+  menteeId  String    @map("mentee_id") @db.Uuid
+  requestId String?   @map("request_id") @db.Uuid
+  status    String    @default("active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(6)
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mentor TenantUser @relation("MentorshipMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentee TenantUser @relation("MentorshipMentee", fields: [menteeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, mentorId])
+  @@index([tenantId, menteeId])
+  @@map("mentorship")
 }
