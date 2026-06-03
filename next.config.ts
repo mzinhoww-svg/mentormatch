@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { SECURITY_HEADERS } from './src/observability/securityHeaders';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -6,6 +7,10 @@ const nextConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
   // `pg` (and friends) are Node-only with dynamic/optional requires — don't bundle.
   serverExternalPackages: ['pg', 'pg-native'],
+  // Baseline security headers on every response (Slice 16 hardening).
+  async headers() {
+    return [{ source: '/:path*', headers: SECURITY_HEADERS }];
+  },
   webpack: (config) => {
     // Resolve ESM-style `.js` import specifiers to their `.ts(x)` sources, so the
     // project's `.js` extension convention (used by tsc/vitest) also builds here.
