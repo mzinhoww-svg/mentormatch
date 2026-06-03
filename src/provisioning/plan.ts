@@ -112,3 +112,70 @@ export function buildDemoPlan(slug: string, name?: string): DemoPlan {
     mentees,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Real (production) provisioning plan — pure & deterministic, NO demo data.
+// ---------------------------------------------------------------------------
+
+/** Default mentoring program name for a freshly provisioned production tenant. */
+export const DEFAULT_PROGRAM_NAME = 'Programa de Mentoria';
+
+export interface RealBrandingInput {
+  programName?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  locale?: string;
+  logoUrl?: string;
+}
+
+export interface RealPlanInput {
+  slug: string;
+  name: string;
+  adminEmail: string;
+  adminName?: string;
+  branding?: RealBrandingInput;
+}
+
+export interface RealPlan {
+  slug: string;
+  name: string;
+  host: string;
+  admin: { email: string; displayName: string };
+  branding: {
+    displayName: string;
+    programName: string;
+    locale: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    logoUrl?: string;
+  };
+}
+
+/**
+ * Plan for a REAL tenant: exactly one admin (the client's own email) plus a
+ * default program + branding. Deliberately has NO mentors, mentees, skills or
+ * sample activity — unlike buildDemoPlan — so a production tenant starts empty
+ * and is filled only by real usage. Colors are left undefined unless explicitly
+ * provided, so the brand-kit defaults apply.
+ */
+export function buildRealPlan(input: RealPlanInput): RealPlan {
+  const name = input.name.trim();
+  const branding = input.branding ?? {};
+  return {
+    slug: input.slug,
+    name,
+    host: `${input.slug}.localhost`,
+    admin: {
+      email: input.adminEmail.trim(),
+      displayName: input.adminName?.trim() || 'Administrador',
+    },
+    branding: {
+      displayName: name,
+      programName: branding.programName?.trim() || DEFAULT_PROGRAM_NAME,
+      locale: branding.locale?.trim() || 'pt-BR',
+      primaryColor: branding.primaryColor?.trim() || undefined,
+      secondaryColor: branding.secondaryColor?.trim() || undefined,
+      logoUrl: branding.logoUrl?.trim() || undefined,
+    },
+  };
+}

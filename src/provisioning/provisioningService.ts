@@ -1,21 +1,30 @@
 /**
- * Tenant provisioning & demo seeding. Builds a fully usable tenant from a single
+ * Tenant provisioning — demo seeding + real/production. Builds a usable tenant from a single
  * call — tenant + default program (via createTenant) + branding + admin + mentors
  * + mentees + program participants + a sample mentorship/session — so a company
  * can start WITHOUT developer intervention. Everything goes through the real
  * domain services (consent, RLS, audit, notifications), so seeded data is
  * indistinguishable from data created by real usage. Idempotent on slug.
  */
+import { randomBytes } from 'node:crypto';
+
 import { createTenant, findTenantBySlug, type TenantRecord } from '../tenancy/admin.js';
 import { RESERVED_SUBDOMAINS, getBaseDomain } from '../tenancy/resolveTenant.js';
 import { signup, login } from '../auth/authService.js';
+import { createResetToken } from '../auth/session.js';
 import { upsertProfile, activateProfile, setMentorAvailable } from '../profile/profileService.js';
 import { createSkill, addUserSkill } from '../profile/skillService.js';
 import { getDefaultProgram, addParticipant } from '../program/programService.js';
 import { updateSettings } from '../settings/settingsService.js';
 import { requestMentorship, acceptRequest } from '../mentorship/mentorshipService.js';
 import { requestSession, confirmSession, completeSession } from '../session/sessionService.js';
-import { buildDemoPlan, DEFAULT_DEMO_PASSWORD, type SeedUser } from './plan.js';
+import {
+  buildDemoPlan,
+  buildRealPlan,
+  DEFAULT_DEMO_PASSWORD,
+  type RealBrandingInput,
+  type SeedUser,
+} from './plan.js';
 
 export interface ProvisionedUser {
   key: string;
@@ -193,4 +202,120 @@ function summarize(
 /** Convenience used by tests/CLI to confirm a seeded account can authenticate. */
 export async function verifyLogin(host: string, email: string, password: string) {
   return login({ host, email, password });
+}
+
+// ---------------------------------------------------------------------------
+// REAL (production) tenant provisioning — no demo data, no shared password.
+// ---------------------------------------------------------------------------
+
+/** First-time onboarding window for the admin's set-password token. */
+const SET_PASSWORD_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+const ADMIN_EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+export interface ProvisionRealInput {
+  slug: string;
+  name: string;
+  adminEmail: string;
+  adminName?: string;
+  branding?: RealBrandingInput;
+  /** Override the set-password token TTL (seconds). Defaults to 7 days. */
+  setPasswordTtlSeconds?: number;
+}
+
+export interface ProvisionRealResult {
+  alreadyExisted: boolean;
+  tenant: TenantRecord;
+  host: string;
+  admin: { id: string; email: string; displayName: string; role: 'admin' };
+  /** One-time token the admin uses to set their first password (reset flow). */
+  setPasswordToken: string;
+  setPasswordConfirmUrlDev: string;
+  setPasswordConfirmUrlProd: string;
+  loginUrlDev: string;
+  loginUrlProd: string;
+}
+
+function summarizeReal(
+  tenant: TenantRecord,
+  host: string,
+  alreadyExisted: boolean,
+  admin: ProvisionRealResult['admin'],
+  setPasswordToken: string,
+): ProvisionRealResult {
+  return {
+    alreadyExisted,
+    tenant,
+    host,
+    admin,
+    setPasswordToken,
+    setPasswordConfirmUrlDev: `http://${host}:3000/api/auth/password-reset/confirm`,
+    setPasswordConfirmUrlProd: `https://${tenant.slug}.${getBaseDomain()}/api/auth/password-reset/confirm`,
+    loginUrlDev: `http://${host}:3000/login`,
+    loginUrlProd: `https://${tenant.slug}.${getBaseDomain()}/login`,
+  };
+}
+
+/**
+ * Provisions a REAL (production) tenant: tenant + default program + branding +
+ * exactly one real admin. Unlike provisionDemoTenant it seeds NO demo cohorts,
+ * skills or sample activity, and sets NO shared password — the admin receives a
+ * one-time set-password token (the existing reset flow) and the random bootstrap
+ * password is never revealed. Idempotent on slug.
+ */
+export async function provisionRealTenant(input: ProvisionRealInput): Promise<ProvisionRealResult> {
+  if (RESERVED_SUBDOMAINS.has(input.slug)) {
+    throw new Error(`reserved_slug: "${input.slug}" cannot be a tenant slug`);
+  }
+  if (!input.name || !input.name.trim()) throw new Error('name_required');
+  const adminEmail = (input.adminEmail || '').trim();
+  if (!ADMIN_EMAIL_RE.test(adminEmail)) throw new Error('invalid_admin_email');
+
+  const plan = buildRealPlan(input);
+  const host = plan.host;
+  const mkAdmin = (id: string): ProvisionRealResult['admin'] => ({
+    id,
+    email: plan.admin.email,
+    displayName: plan.admin.displayName,
+    role: 'admin',
+  });
+
+  const existing = await findTenantBySlug(plan.slug);
+  if (existing) {
+    return summarizeReal(existing, host, true, mkAdmin(''), '');
+  }
+
+  const tenant = await createTenant({ slug: plan.slug, name: plan.name });
+
+  // Admin account with a strong, discardable bootstrap password that is never
+  // revealed; the admin gets in only via the one-time set-password token below.
+  const bootstrapPassword = randomBytes(24).toString('base64url');
+  const created = await signup({
+    host,
+    email: plan.admin.email,
+    password: bootstrapPassword,
+    displayName: plan.admin.displayName,
+    role: 'admin',
+    consent: true,
+  });
+  // Active profile (consent was recorded atomically by signup).
+  await activateProfile(tenant.id, created.id);
+
+  // Explicit branding so the tenant is configured; colors fall back to the
+  // brand-kit defaults when not provided.
+  await updateSettings(tenant.id, created.id, {
+    displayName: plan.branding.displayName,
+    programName: plan.branding.programName,
+    locale: plan.branding.locale,
+    primaryColor: plan.branding.primaryColor ?? null,
+    secondaryColor: plan.branding.secondaryColor ?? null,
+    logoUrl: plan.branding.logoUrl ?? null,
+  });
+
+  const setPasswordToken = createResetToken({
+    sub: created.id,
+    tenantId: tenant.id,
+    ttlSeconds: input.setPasswordTtlSeconds ?? SET_PASSWORD_TTL_SECONDS,
+  });
+
+  return summarizeReal(tenant, host, false, mkAdmin(created.id), setPasswordToken);
 }
