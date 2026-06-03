@@ -41,7 +41,10 @@ This documents strategy and drills; it is **not** application code.
 - [ ] Wildcard DNS `*.APP_BASE_DOMAIN` → Vercel; apex/`www` + `admin` as needed.
 - [ ] `npm run db:bootstrap` applied to the production DB (migrations 0001–0011).
 - [ ] Backups/PITR enabled.
-- [ ] Vercel Cron for `/api/cron/email` active (uses `CRON_SECRET`).
+- [ ] Schedule `/api/cron/email` (uses `CRON_SECRET`): a Vercel Cron requires the
+      **Pro** plan for sub-daily schedules; on Hobby use an **external scheduler**
+      (e.g. GitHub Actions/Upstash) hitting the endpoint every few minutes, or call
+      `/api/admin/email/process` per tenant.
 
 ### Per-tenant onboarding
 - [ ] `npm run provision -- --slug <tenant> --name "<Name>"` against prod env.

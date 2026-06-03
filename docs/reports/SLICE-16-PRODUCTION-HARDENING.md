@@ -21,7 +21,10 @@ flow. Out of scope: new landing.
 - **Real cross-tenant email worker** (`email/cron.ts`): `processAllTenants()` iterates
   active tenants and runs `processTenantEmails` **in each tenant's own context**
   (withTenant/RLS); a per-tenant failure is alerted and skipped (never aborts the run).
-- **Schedule**: `vercel.json` Cron `*/5 * * * *` → `GET /api/cron/email`.
+- **Schedule**: `GET /api/cron/email` is the scheduler entrypoint. (A `vercel.json`
+  cron `*/5` was tried but the Vercel Hobby plan only allows daily crons and rejected
+  the deploy — see post-merge note; scheduling is via an external trigger or the Pro
+  plan. The endpoint + worker are unchanged.)
 - **Auth**: `/api/cron/email` requires `CRON_SECRET` (Bearer). Unset → **503 disabled**;
   wrong → **401**. Constant-time-ish compare.
 - **Retries with limit / controlled dead-letter**: `sendPendingEmails` retries
