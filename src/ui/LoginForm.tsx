@@ -22,6 +22,17 @@ const DEFAULTS: Branding = {
   locale: 'pt-BR',
 };
 
+/** Maps an auth error to a specific, honest message (not a blanket "invalid"). */
+function loginErrorMessage(err: unknown): string {
+  if (!(err instanceof ApiError)) return 'Erro ao entrar. Tente novamente.';
+  if (err.code === 'TENANT_NOT_RESOLVED' || err.message === 'no_tenant_login') {
+    return 'Workspace não encontrado neste endereço. Verifique o subdomínio da empresa.';
+  }
+  if (err.status === 401) return 'Credenciais inválidas.';
+  if (err.status === 429) return 'Muitas tentativas. Aguarde um instante.';
+  return 'Erro no servidor. Tente novamente em instantes.';
+}
+
 export function LoginForm() {
   const [branding, setBranding] = useState<Branding>(DEFAULTS);
   const [email, setEmail] = useState('');
@@ -44,7 +55,7 @@ export function LoginForm() {
       await api.post('/api/auth/login', { email, password });
       window.location.assign('/app');
     } catch (err) {
-      setError(err instanceof ApiError ? 'Credenciais inválidas.' : 'Erro ao entrar.');
+      setError(loginErrorMessage(err));
     } finally {
       setBusy(false);
     }

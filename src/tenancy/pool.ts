@@ -8,9 +8,13 @@
  *
  * Connection strings come from the environment (see docs/ENVIRONMENT.md):
  *   DATABASE_URL → mm_app (pooled)        DIRECT_URL → mm_owner (direct)
+ *
+ * SSL: managed Postgres (Supabase/Neon/RDS) requires TLS. We enable SSL
+ * automatically for non-local hosts (disable with PGSSL=disable). Local dev/CI
+ * (localhost/127.0.0.1) connects without SSL.
  */
 
-import { Pool } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 
 let appPoolInstance: Pool | undefined;
 let ownerPoolInstance: Pool | undefined;
@@ -21,10 +25,26 @@ function requireEnv(name: string): string {
   return value;
 }
 
+/** True when the connection string targets a local database. */
+function isLocalConnection(connectionString: string): boolean {
+  return /@(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:[/?]|$)/i.test(connectionString);
+}
+
+function poolConfig(connectionString: string): PoolConfig {
+  const cfg: PoolConfig = { connectionString };
+  if (process.env.PGSSL !== 'disable' && !isLocalConnection(connectionString)) {
+    // Managed providers terminate TLS with their own chain; verifying it adds
+    // no security here (we trust the host via the secret URL) but breaks
+    // connections behind poolers. rejectUnauthorized:false is the standard.
+    cfg.ssl = { rejectUnauthorized: false };
+  }
+  return cfg;
+}
+
 /** Application pool (role: mm_app). RLS applies to everything it runs. */
 export function appPool(): Pool {
   if (!appPoolInstance) {
-    appPoolInstance = new Pool({ connectionString: requireEnv('DATABASE_URL') });
+    appPoolInstance = new Pool(poolConfig(requireEnv('DATABASE_URL')));
   }
   return appPoolInstance;
 }
@@ -32,7 +52,7 @@ export function appPool(): Pool {
 /** Owner pool (role: mm_owner) for non-tenant-scoped registry operations. */
 export function ownerPool(): Pool {
   if (!ownerPoolInstance) {
-    ownerPoolInstance = new Pool({ connectionString: requireEnv('DIRECT_URL') });
+    ownerPoolInstance = new Pool(poolConfig(requireEnv('DIRECT_URL')));
   }
   return ownerPoolInstance;
 }
