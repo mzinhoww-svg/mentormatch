@@ -12,6 +12,9 @@ import { createTenant, findTenantBySlug, type TenantRecord } from '../tenancy/ad
 import { RESERVED_SUBDOMAINS, getBaseDomain } from '../tenancy/resolveTenant.js';
 import { signup, login } from '../auth/authService.js';
 import { createResetToken } from '../auth/session.js';
+import { logger } from '../observability/logger.js';
+import { getEmailProvider, type EmailProvider } from '../email/provider.js';
+import { sendSetPasswordEmail } from '../email/transactional.js';
 import { upsertProfile, activateProfile, setMentorAvailable } from '../profile/profileService.js';
 import { createSkill, addUserSkill } from '../profile/skillService.js';
 import { getDefaultProgram, addParticipant } from '../program/programService.js';
@@ -229,8 +232,15 @@ export interface ProvisionRealResult {
   admin: { id: string; email: string; displayName: string; role: 'admin' };
   /** One-time token the admin uses to set their first password (reset flow). */
   setPasswordToken: string;
+  /** Friendly set-password PAGE (carries the token) — what the admin opens. */
+  setPasswordUrlDev: string;
+  setPasswordUrlProd: string;
+  /** Raw confirm ENDPOINT the page posts to — kept for CLI/API fallback. */
   setPasswordConfirmUrlDev: string;
   setPasswordConfirmUrlProd: string;
+  /** Whether the set-password email was delivered, and by which provider. */
+  emailSent: boolean;
+  emailProvider: string;
   loginUrlDev: string;
   loginUrlProd: string;
 }
@@ -241,17 +251,25 @@ function summarizeReal(
   alreadyExisted: boolean,
   admin: ProvisionRealResult['admin'],
   setPasswordToken: string,
+  emailSent: boolean,
+  emailProvider: string,
 ): ProvisionRealResult {
+  const prodBase = `https://${tenant.slug}.${getBaseDomain()}`;
+  const tokenQuery = setPasswordToken ? `?token=${encodeURIComponent(setPasswordToken)}` : '';
   return {
     alreadyExisted,
     tenant,
     host,
     admin,
     setPasswordToken,
+    setPasswordUrlDev: `http://${host}:3000/set-password${tokenQuery}`,
+    setPasswordUrlProd: `${prodBase}/set-password${tokenQuery}`,
     setPasswordConfirmUrlDev: `http://${host}:3000/api/auth/password-reset/confirm`,
-    setPasswordConfirmUrlProd: `https://${tenant.slug}.${getBaseDomain()}/api/auth/password-reset/confirm`,
+    setPasswordConfirmUrlProd: `${prodBase}/api/auth/password-reset/confirm`,
+    emailSent,
+    emailProvider,
     loginUrlDev: `http://${host}:3000/login`,
-    loginUrlProd: `https://${tenant.slug}.${getBaseDomain()}/login`,
+    loginUrlProd: `${prodBase}/login`,
   };
 }
 
@@ -262,7 +280,10 @@ function summarizeReal(
  * one-time set-password token (the existing reset flow) and the random bootstrap
  * password is never revealed. Idempotent on slug.
  */
-export async function provisionRealTenant(input: ProvisionRealInput): Promise<ProvisionRealResult> {
+export async function provisionRealTenant(
+  input: ProvisionRealInput,
+  provider: EmailProvider = getEmailProvider(),
+): Promise<ProvisionRealResult> {
   if (RESERVED_SUBDOMAINS.has(input.slug)) {
     throw new Error(`reserved_slug: "${input.slug}" cannot be a tenant slug`);
   }
@@ -281,7 +302,7 @@ export async function provisionRealTenant(input: ProvisionRealInput): Promise<Pr
 
   const existing = await findTenantBySlug(plan.slug);
   if (existing) {
-    return summarizeReal(existing, host, true, mkAdmin(''), '');
+    return summarizeReal(existing, host, true, mkAdmin(''), '', false, provider.name);
   }
 
   const tenant = await createTenant({ slug: plan.slug, name: plan.name });
@@ -311,11 +332,31 @@ export async function provisionRealTenant(input: ProvisionRealInput): Promise<Pr
     logoUrl: plan.branding.logoUrl ?? null,
   });
 
-  const setPasswordToken = createResetToken({
-    sub: created.id,
-    tenantId: tenant.id,
-    ttlSeconds: input.setPasswordTtlSeconds ?? SET_PASSWORD_TTL_SECONDS,
-  });
+  const ttlSeconds = input.setPasswordTtlSeconds ?? SET_PASSWORD_TTL_SECONDS;
+  const setPasswordToken = createResetToken({ sub: created.id, tenantId: tenant.id, ttlSeconds });
 
-  return summarizeReal(tenant, host, false, mkAdmin(created.id), setPasswordToken);
+  // Deliver the set-password link synchronously (the email-outbox cron was
+  // removed on Hobby). Never fails provisioning — the token is also returned so
+  // the CLI/operator can deliver it manually when email is unconfigured.
+  const setPasswordUrlProd = `https://${tenant.slug}.${getBaseDomain()}/set-password?token=${encodeURIComponent(setPasswordToken)}`;
+  const send = await sendSetPasswordEmail(
+    {
+      to: plan.admin.email,
+      recipientName: plan.admin.displayName,
+      tenantName: tenant.name,
+      setPasswordUrl: setPasswordUrlProd,
+      validDays: Math.max(1, Math.round(ttlSeconds / 86_400)),
+    },
+    tenant.id,
+    provider,
+  );
+  if (!send.ok) {
+    logger.warn('provisioning.set_password_email_failed', {
+      tenantId: tenant.id,
+      provider: provider.name,
+      error: send.error,
+    });
+  }
+
+  return summarizeReal(tenant, host, false, mkAdmin(created.id), setPasswordToken, send.ok, provider.name);
 }
