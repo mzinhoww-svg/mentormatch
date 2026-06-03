@@ -39,6 +39,7 @@ model Tenant {
   programParticipants ProgramParticipant[]
   settings            TenantSettings?
   feedback            Feedback[]
+  emails              EmailMessage[]
 
   @@map("tenant")
 }
@@ -279,10 +280,34 @@ model Notification {
 
   tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   target TenantUser @relation(fields: [targetUserId], references: [id], onDelete: Cascade)
+  emails EmailMessage[]
 
   @@index([tenantId, targetUserId, status])
   @@index([tenantId, createdAt])
   @@map("notification")
+}
+
+model EmailMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  notificationId String?  @unique @map("notification_id") @db.Uuid
+  recipient      String
+  templateKey    String   @map("template_key")
+  subject        String
+  body           String
+  originEvent    String   @map("origin_event")
+  status         String   @default("pending")
+  provider       String?
+  attempts       Int      @default(0)
+  lastError      String?  @map("last_error")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  notification Notification? @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@map("email_message")
 }
 
 model NotificationPreference {
