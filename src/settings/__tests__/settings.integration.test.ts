@@ -5,6 +5,7 @@ import { appPool, closePools } from '../../tenancy/pool.js';
 import {
   getSettings,
   updateSettings,
+  setTenantLogo,
   setTenantStatus,
   getPublicBranding,
 } from '../settingsService.js';
@@ -141,5 +142,23 @@ describe.skipIf(!hasDb)('Tenant settings & branding foundation (integration)', (
     const actions = events.rows.map((r) => r.action);
     expect(actions).toContain('settings.updated');
     expect(actions).toContain('settings.status_changed');
+  });
+
+  it('9. setTenantLogo sets and clears the logo (which updateSettings cannot clear)', async () => {
+    const a = await fresh('a9');
+    const adminA = await createAdmin(a.id);
+
+    const s1 = await setTenantLogo(a.id, adminA, 'https://blob/new.png');
+    expect(s1.branding.logoUrl).toBe('https://blob/new.png');
+    expect((await getSettings(a.id)).branding.logoUrl).toBe('https://blob/new.png');
+
+    // updateSettings with null keeps the existing logo (COALESCE)…
+    await updateSettings(a.id, adminA, { logoUrl: null });
+    expect((await getSettings(a.id)).branding.logoUrl).toBe('https://blob/new.png');
+
+    // …but setTenantLogo(null) actually clears it.
+    const s2 = await setTenantLogo(a.id, adminA, null);
+    expect(s2.branding.logoUrl).toBeNull();
+    expect((await getSettings(a.id)).branding.logoUrl).toBeNull();
   });
 });
