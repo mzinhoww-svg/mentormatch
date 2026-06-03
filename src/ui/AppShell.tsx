@@ -34,7 +34,7 @@ export function AppShell({
     <div className="app-shell" style={brandingStyle(branding)}>
       <aside className="side">
         <div className="side-brand">
-          <Lockup height={20} ink="var(--argila-50)" />
+          <Lockup height={22} ink="var(--argila-50)" />
         </div>
         <nav className="side-nav" aria-label="Navegação principal">
           {items.map((it) => (
@@ -44,13 +44,13 @@ export function AppShell({
           ))}
         </nav>
         <div className="side-user">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="side-user-id">
             <span className="av" aria-hidden>
               {initials(displayName)}
             </span>
-            <span>{displayName}</span>
+            <span className="name">{displayName}</span>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={logout} style={{ color: 'var(--argila-100)' }}>
+          <button className="btn btn-ghost btn-sm" onClick={logout} style={{ color: 'var(--argila-100)', borderColor: 'var(--tinta-600)' }}>
             Sair
           </button>
         </div>
@@ -58,6 +58,7 @@ export function AppShell({
       <div className="main">
         <header className="topbar">
           <div className="eyebrow">{branding.displayName ?? branding.programName}</div>
+          <span className="slogan">Passe adiante.</span>
         </header>
         <div className="content">{children}</div>
       </div>
