@@ -31,14 +31,26 @@ function isLocalConnection(connectionString: string): boolean {
 }
 
 function poolConfig(connectionString: string): PoolConfig {
-  const cfg: PoolConfig = { connectionString };
-  if (process.env.PGSSL !== 'disable' && !isLocalConnection(connectionString)) {
-    // Managed providers terminate TLS with their own chain; verifying it adds
-    // no security here (we trust the host via the secret URL) but breaks
-    // connections behind poolers. rejectUnauthorized:false is the standard.
-    cfg.ssl = { rejectUnauthorized: false };
+  if (process.env.PGSSL === 'disable' || isLocalConnection(connectionString)) {
+    return { connectionString };
   }
-  return cfg;
+  // Managed Postgres (Supabase/Neon/RDS) presents a private/self-signed CA chain
+  // via the pooler. A `sslmode=require` in the URL forces certificate VERIFICATION
+  // (→ SELF_SIGNED_CERT_IN_CHAIN) and overrides our ssl config, so strip it and
+  // set SSL explicitly WITHOUT chain verification (we trust the host via the
+  // secret URL, not the CA).
+  return { connectionString: stripSslmode(connectionString), ssl: { rejectUnauthorized: false } };
+}
+
+/** Removes any `sslmode` query param so it can't override our explicit ssl config. */
+function stripSslmode(connectionString: string): string {
+  try {
+    const u = new URL(connectionString);
+    u.searchParams.delete('sslmode');
+    return u.toString();
+  } catch {
+    return connectionString;
+  }
 }
 
 /** Application pool (role: mm_app). RLS applies to everything it runs. */
