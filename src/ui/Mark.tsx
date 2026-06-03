@@ -10,26 +10,31 @@ const ARM = 'M 50 15 C 71 17, 81 35, 69 51 C 62 61, 53 58, 51 50';
 
 export function Mark({
   size = 28,
-  ink = '#14100D',
+  ink = 'var(--ink)',
   accent = 'var(--brand-primary)',
   className,
   style,
+  decorative = false,
 }: {
   size?: number;
   ink?: string;
   accent?: string;
   className?: string;
   style?: CSSProperties;
+  /** Purely decorative (e.g. background glyph): hidden from assistive tech. */
+  decorative?: boolean;
 }) {
   const weight = 9;
+  const a11y = decorative
+    ? ({ 'aria-hidden': true } as const)
+    : ({ role: 'img', 'aria-label': 'MentorMatch' } as const);
   return (
     <svg
       viewBox="0 0 100 100"
       width={size}
       height={size}
       fill="none"
-      role="img"
-      aria-label="MentorMatch"
+      {...a11y}
       className={className}
       style={style}
     >

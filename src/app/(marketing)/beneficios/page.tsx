@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: 'Benefícios para RH',
   description:
     'Retenção de conhecimento, sucessão, desenvolvimento interno, aceleração de onboarding e compartilhamento de expertise — o impacto da mentoria que circula para Pessoas & Cultura.',
-  openGraph: { title: 'Benefícios para RH · MentorMatch', description: 'Retenção, sucessão, desenvolvimento, onboarding e expertise.' },
+  openGraph: { title: 'Benefícios para RH · MentorMatch', description: 'Retenção, sucessão, desenvolvimento, onboarding e expertise.', images: ['/og.png'] },
 };
 
 export default function BeneficiosPage() {
