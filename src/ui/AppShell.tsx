@@ -57,7 +57,16 @@ export function AppShell({
       </aside>
       <div className="main">
         <header className="topbar">
-          <div className="eyebrow">{branding.displayName ?? branding.programName}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', minWidth: 0 }}>
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt={branding.displayName ?? 'Logo'}
+                style={{ height: 24, width: 'auto', flexShrink: 0 }}
+              />
+            ) : null}
+            <div className="eyebrow">{branding.displayName ?? branding.programName}</div>
+          </div>
           <span className="slogan">Passe adiante.</span>
         </header>
         <div className="content">{children}</div>

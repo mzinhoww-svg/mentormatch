@@ -162,6 +162,33 @@ export async function updateSettings(
   return settings;
 }
 
+/**
+ * Sets (or clears, with null) the tenant logo URL. Unlike updateSettings this
+ * can clear the value — updateSettings COALESCEs a null logoUrl to keep the
+ * prior value. Audited as a branding change.
+ */
+export async function setTenantLogo(
+  tenantId: string,
+  adminId: string,
+  logoUrl: string | null,
+): Promise<TenantSettings> {
+  const settings = await withTenant(tenantId, async (db) => {
+    const res = await db.query<SettingsRow>(
+      `INSERT INTO tenant_settings (tenant_id, logo_url)
+       VALUES ($1, $2)
+       ON CONFLICT (tenant_id) DO UPDATE SET logo_url = $2, updated_at = now()
+       RETURNING ${SELECT_ROW}`,
+      [tenantId, logoUrl],
+    );
+    return toSettings(res.rows[0]);
+  });
+  await recordSettingsEvent(tenantId, 'settings.updated', {
+    actorId: adminId,
+    metadata: { brandingChanged: true, logoChanged: true },
+  });
+  return settings;
+}
+
 /** Sets the tenant's operational status (active/inactive). Audited. */
 export async function setTenantStatus(
   tenantId: string,

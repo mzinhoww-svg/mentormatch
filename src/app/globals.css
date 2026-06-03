@@ -25,6 +25,10 @@
   --brand-primary: var(--brasa-500);
   --brand-secondary: var(--jade-600);
   --accent: var(--brand-primary);
+  /* Readable text on accent surfaces; the shell overrides these per tenant
+     (flips to ink when a light accent would make white text unreadable). */
+  --accent-ink: #fff;
+  --accent-ink-2: #fff;
 
   --serif: var(--font-serif), 'Instrument Serif', Georgia, serif;
   --sans: var(--font-sans), 'Hanken Grotesk', system-ui, sans-serif;
@@ -47,7 +51,7 @@ body {
   margin: 0; font-family: var(--sans); color: var(--ink); background: var(--paper);
   font-size: 16px; line-height: 1.55; font-weight: 400;
 }
-::selection { background: var(--brand-primary); color: #fff; }
+::selection { background: var(--brand-primary); color: var(--accent-ink); }
 
 /* Visible keyboard focus for all interactive elements (mouse clicks stay clean
    via :focus-visible). Offset ring uses the brand primary for contrast. */
@@ -76,7 +80,7 @@ a { color: inherit; }
     box-shadow var(--dur-1), filter var(--dur-1), border-color var(--dur-1);
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: var(--brand-primary); color: #fff; }
+.btn-primary { background: var(--brand-primary); color: var(--accent-ink); }
 .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--sh-2); filter: brightness(0.97); }
 .btn-ink { background: var(--tinta-900); color: var(--argila-50); }
 .btn-ink:hover:not(:disabled) { background: var(--tinta-700); transform: translateY(-1px); }
@@ -121,7 +125,7 @@ a { color: inherit; }
   transition: background var(--dur-1), color var(--dur-1);
 }
 .nav-item:hover { background: var(--tinta-700); color: var(--argila-50); }
-.nav-item.active { background: var(--brand-primary); color: #fff; font-weight: 600; box-shadow: var(--sh-2); }
+.nav-item.active { background: var(--brand-primary); color: var(--accent-ink); font-weight: 600; box-shadow: var(--sh-2); }
 .side-user {
   margin-top: auto; position: relative; z-index: 1;
   display: flex; flex-direction: column; gap: 12px;
@@ -179,7 +183,7 @@ a.card:hover .stat-v { color: var(--brand-primary); }
 .row-item:last-child { border-bottom: none; padding-bottom: 0; }
 .av {
   width: 40px; height: 40px; border-radius: var(--r-pill);
-  background: var(--brand-secondary); color: #fff; display: grid; place-items: center;
+  background: var(--brand-secondary); color: var(--accent-ink-2); display: grid; place-items: center;
   font-weight: 700; font-size: 14px; flex-shrink: 0; letter-spacing: -0.01em;
 }
 
@@ -223,7 +227,7 @@ a.card:hover .stat-v { color: var(--brand-primary); }
 
 /* misc */
 .unread-dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--brand-primary); flex-shrink: 0; }
-.count-pill { background: var(--brand-primary); color: #fff; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; padding: 2px 9px; }
+.count-pill { background: var(--brand-primary); color: var(--accent-ink); border-radius: var(--r-pill); font-size: 11px; font-weight: 700; padding: 2px 9px; }
 .skill-chip { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; padding: 4px 10px; border-radius: var(--r-pill); background: var(--jade-100); color: var(--jade-700); }
 
 /* ---- auth (login / workspace) ---- */

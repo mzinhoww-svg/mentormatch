@@ -48,7 +48,13 @@ describe('brandingToCssVars (tenant branding applied)', () => {
       programName: 'X',
       locale: 'pt-BR',
     };
-    expect(brandingToCssVars(b)).toEqual({ '--brand-primary': '#0A0A0A', '--brand-secondary': '#0B0B0B' });
+    expect(brandingToCssVars(b)).toEqual({
+      '--brand-primary': '#0A0A0A',
+      '--brand-secondary': '#0B0B0B',
+      // Dark accents → white text stays readable on accent surfaces.
+      '--accent-ink': '#FFFFFF',
+      '--accent-ink-2': '#FFFFFF',
+    });
   });
 });
 
