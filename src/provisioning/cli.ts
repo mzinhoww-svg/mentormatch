@@ -57,16 +57,18 @@ async function runReal(): Promise<void> {
   console.log(`\n✓ Production tenant provisioned: ${r.tenant.name} (${r.tenant.slug}) [${r.tenant.id}]`);
   console.log(`  Default program + branding configured. No demo data seeded.`);
   console.log(`  Admin: ${r.admin.email} (role=admin) — account active, password NOT set yet.`);
-  console.log(`\n  Set-password — send this to the admin:`);
-  console.log(`    Confirm endpoint (host selects the tenant):`);
-  console.log(`      ${r.setPasswordConfirmUrlProd}`);
-  console.log(`    One-time token (valid 7 days):`);
-  console.log(`      ${r.setPasswordToken}`);
-  console.log(`    Example:`);
-  console.log(`      curl -X POST ${r.setPasswordConfirmUrlProd} \\`);
-  console.log(`        -H 'Content-Type: application/json' \\`);
-  console.log(`        -d '{"token":"${r.setPasswordToken}","password":"<NEW_PASSWORD min 8 chars>"}'`);
-  console.log(`    (A friendly set-password page ships in Phase 2.)`);
+  if (r.emailSent) {
+    console.log(`\n  ✉ Set-password email sent to ${r.admin.email} via "${r.emailProvider}".`);
+    console.log(`    Set-password page (the link in that email):`);
+  } else {
+    console.log(`\n  ⚠ Set-password email NOT sent (provider="${r.emailProvider}"). Send this link to the admin:`);
+  }
+  console.log(`      ${r.setPasswordUrlProd}`);
+  console.log(`\n  Fallback — raw token (valid 7 days), POST to the confirm endpoint:`);
+  console.log(`    token: ${r.setPasswordToken}`);
+  console.log(`    curl -X POST ${r.setPasswordConfirmUrlProd} \\`);
+  console.log(`      -H 'Content-Type: application/json' \\`);
+  console.log(`      -d '{"token":"${r.setPasswordToken}","password":"<NEW_PASSWORD min 8 chars>"}'`);
   console.log(`\n  After setting the password, log in:`);
   console.log(`    dev : ${r.loginUrlDev}`);
   console.log(`    prod: ${r.loginUrlProd}\n`);

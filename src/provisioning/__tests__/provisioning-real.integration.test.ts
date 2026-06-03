@@ -6,6 +6,7 @@ import { closePools } from '../../tenancy/pool.js';
 import { resolveActiveTenant } from '../../tenancy/admin.js';
 import { getOverview } from '../../admin/adminService.js';
 import { searchMentors } from '../../search/mentorSearch.js';
+import type { EmailProvider, OutgoingEmail } from '../../email/provider.js';
 
 const hasDb = Boolean(process.env.DATABASE_URL && process.env.DIRECT_URL && process.env.AUTH_SECRET);
 const rand = () => Math.random().toString(36).slice(2, 7);
@@ -18,11 +19,30 @@ describe.skipIf(!hasDb)('Real (production) tenant provisioning (integration)', (
   it('provisions an empty, real tenant with one admin and a working set-password flow', async () => {
     const slug = `acme${rand()}`;
     const adminEmail = `ana.${rand()}@acme.test`;
-    const r = await provisionRealTenant({ slug, name: 'Acme Inc', adminEmail, adminName: 'Ana Admin' });
+    const sentEmails: OutgoingEmail[] = [];
+    const emailProvider: EmailProvider = {
+      name: 'fake',
+      async send(e) {
+        sentEmails.push(e);
+        return { ok: true, providerMessageId: 'fake-1' };
+      },
+    };
+    const r = await provisionRealTenant(
+      { slug, name: 'Acme Inc', adminEmail, adminName: 'Ana Admin' },
+      emailProvider,
+    );
 
     expect(r.alreadyExisted).toBe(false);
     expect(r.admin.role).toBe('admin');
     expect(r.setPasswordToken.length).toBeGreaterThan(0);
+
+    // The set-password link is emailed synchronously at provisioning time.
+    expect(r.emailSent).toBe(true);
+    expect(r.emailProvider).toBe('fake');
+    expect(r.setPasswordUrlProd).toContain('/set-password?token=');
+    expect(sentEmails).toHaveLength(1);
+    expect(sentEmails[0]).toMatchObject({ to: adminEmail, templateKey: 'admin.set_password' });
+    expect(sentEmails[0]!.body).toContain('/set-password?token=');
 
     const host = `${slug}.localhost`;
 
