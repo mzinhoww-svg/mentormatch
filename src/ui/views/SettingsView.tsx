@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { Loading, Banner, useResource, errorMessage } from '../components.js';
 import { isAdminRole } from '../nav.js';
 import { bestTextContrast, MIN_TEXT_CONTRAST } from '../branding.js';
+import { CustomDomains } from './CustomDomains.js';
 import { NOTIFICATION_TYPES } from '../../notifications/types.js';
 
 interface Pref {
@@ -49,7 +50,12 @@ export function SettingsView() {
         })}
       </section>
 
-      {isAdminRole(me.data?.role) ? <BrandingSettings /> : null}
+      {isAdminRole(me.data?.role) ? (
+        <>
+          <BrandingSettings />
+          <CustomDomains />
+        </>
+      ) : null}
     </div>
   );
 }

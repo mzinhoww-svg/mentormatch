@@ -60,11 +60,14 @@ model PlatformAdmin {
 }
 
 model TenantDomain {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  domain    String   @unique
-  isPrimary Boolean  @default(false) @map("is_primary")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  domain            String    @unique
+  isPrimary         Boolean   @default(false) @map("is_primary")
+  verified          Boolean   @default(false)
+  verificationToken String?   @map("verification_token")
+  verifiedAt        DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
