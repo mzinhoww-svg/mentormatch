@@ -44,6 +44,21 @@ model Tenant {
   @@map("tenant")
 }
 
+/// Platform operators (cross-tenant). Owner-only registry: no RLS and no mm_app
+/// grant, so password hashes are unreachable by the app role (see migration 0012).
+model PlatformAdmin {
+  id              String   @id @default(uuid()) @db.Uuid
+  email           String
+  normalizedEmail String   @unique @map("normalized_email")
+  displayName     String?  @map("display_name")
+  passwordHash    String   @map("password_hash")
+  status          String   @default("active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("platform_admin")
+}
+
 model TenantDomain {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid

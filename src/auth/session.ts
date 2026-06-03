@@ -10,8 +10,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export const SESSION_COOKIE = 'mm_session';
+export const PLATFORM_COOKIE = 'mm_platform';
 const DEFAULT_SESSION_TTL = 60 * 60 * 8; // 8h
 const DEFAULT_RESET_TTL = 60 * 60; // 1h
+const DEFAULT_PLATFORM_TTL = 60 * 60 * 8; // 8h
 
 function secret(): string {
   const s = process.env.AUTH_SECRET;
@@ -24,7 +26,7 @@ function b64url(buf: Buffer): string {
 }
 
 interface BaseClaims {
-  typ: 'session' | 'reset';
+  typ: 'session' | 'reset' | 'platform';
   sub: string;
   tenantId: string;
   iat: number;
@@ -108,4 +110,26 @@ export function verifyResetToken(token: string): { sub: string; tenantId: string
   const c = verify(token);
   if (!c || c.typ !== 'reset') return null;
   return { sub: c.sub, tenantId: c.tenantId };
+}
+
+/**
+ * Platform-admin session token. Carries no tenant (cross-tenant) — `tenantId`
+ * is a constant sentinel so it can never satisfy a tenant session check, and a
+ * tenant session (typ 'session') can never satisfy verifyPlatformToken.
+ */
+export function createPlatformToken(input: { sub: string; ttlSeconds?: number }): string {
+  const now = Math.floor(Date.now() / 1000);
+  return sign({
+    typ: 'platform',
+    sub: input.sub,
+    tenantId: 'platform',
+    iat: now,
+    exp: now + (input.ttlSeconds ?? DEFAULT_PLATFORM_TTL),
+  });
+}
+
+export function verifyPlatformToken(token: string): { sub: string } | null {
+  const c = verify(token);
+  if (!c || c.typ !== 'platform') return null;
+  return { sub: c.sub };
 }

@@ -18,6 +18,7 @@
     "provision": "tsx src/provisioning/cli.ts",
     "provision:real": "tsx src/provisioning/cli.ts --real",
     "seed:demo": "tsx src/provisioning/cli.ts --slug acme --name \"Acme (Demo)\"",
+    "platform:admin": "tsx src/platform/cli.ts",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
