@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Contato',
   description: 'Fale com a equipe do MentorMatch. Tire dúvidas ou solicite uma demonstração.',
-  openGraph: { title: 'Contato · MentorMatch', description: 'Fale com a equipe do MentorMatch.' },
+  openGraph: { title: 'Contato · MentorMatch', description: 'Fale com a equipe do MentorMatch.', images: ['/og.png'] },
 };
 
 export default function ContatoPage() {

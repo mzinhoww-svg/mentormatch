@@ -3,9 +3,9 @@
    Design system ported from the approved brand kit (brand.css). Tokens are the
    canonical Circulação palette; per-tenant branding overrides --brand-primary /
    --brand-secondary at runtime (see BrandProvider). No new identity is invented.
+   Fonts are self-hosted via next/font/local (see app/fonts.ts + app/layout.tsx),
+   exposed as --font-sans / --font-serif / --font-mono and aliased below.
    ========================================================================= */
-
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
   --tinta-900: #14100d; --tinta-800: #1e1812; --tinta-700: #2c241c;
@@ -27,9 +27,9 @@
   --brand-secondary: var(--jade-600);
   --accent: var(--brand-primary);
 
-  --serif: 'Instrument Serif', Georgia, serif;
-  --sans: 'Hanken Grotesk', system-ui, sans-serif;
-  --mono: 'Space Mono', ui-monospace, monospace;
+  --serif: var(--font-serif), 'Instrument Serif', Georgia, serif;
+  --sans: var(--font-sans), 'Hanken Grotesk', system-ui, sans-serif;
+  --mono: var(--font-mono), 'Space Mono', ui-monospace, monospace;
 
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
   --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;

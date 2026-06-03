@@ -21,8 +21,14 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     url: siteUrl(),
     locale: 'pt_BR',
+    images: ['/og.png'],
   },
-  twitter: { card: 'summary_large_image', title: 'MentorMatch', description: DESCRIPTION },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MentorMatch',
+    description: DESCRIPTION,
+    images: ['/og.png'],
+  },
 };
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {

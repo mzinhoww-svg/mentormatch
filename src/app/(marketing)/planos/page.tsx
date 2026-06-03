@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: 'Planos',
   description:
     'Starter, Growth e Enterprise — estrutura comercial do MentorMatch com recursos compatíveis com o produto. Solicite uma demonstração para um plano sob medida.',
-  openGraph: { title: 'Planos · MentorMatch', description: 'Starter, Growth e Enterprise.' },
+  openGraph: { title: 'Planos · MentorMatch', description: 'Starter, Growth e Enterprise.', images: ['/og.png'] },
 };
 
 export default function PlanosPage() {
