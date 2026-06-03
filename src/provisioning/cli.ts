@@ -1,25 +1,83 @@
 /**
  * Single-command provisioning CLI.
  *
+ *   # Demo tenant (seeded with sample cohorts + a shared demo password):
+ *   npm run seed:demo
  *   npm run provision -- --slug acme --name "Acme Corp" [--password ...]
- *   npm run seed:demo                # provisions the 'demo' tenant
  *
- * Requires DATABASE_URL + DIRECT_URL in the environment (same as the app).
+ *   # REAL / production tenant (one real admin, NO demo data, set-password link):
+ *   npm run provision:real -- --slug acme --name "Acme Corp" \
+ *     --admin-email admin@acme.com [--admin-name "Ana Admin"] \
+ *     [--program-name "..."] [--primary-color "#RRGGBB"] \
+ *     [--secondary-color "#RRGGBB"] [--locale pt-BR] [--logo-url https://...]
+ *
+ * Requires DATABASE_URL + DIRECT_URL (+ AUTH_SECRET) in the environment.
  */
-import { provisionDemoTenant, verifyLogin } from './provisioningService.js';
+import { provisionDemoTenant, provisionRealTenant, verifyLogin } from './provisioningService.js';
 import { closePools } from '../tenancy/pool.js';
+
+const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
 function arg(name: string, fallback?: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
 
-async function main(): Promise<void> {
+async function runReal(): Promise<void> {
+  const slug = arg('slug');
+  if (!slug || !SLUG_RE.test(slug)) {
+    throw new Error(`invalid or missing --slug: ${slug ?? '(none)'}`);
+  }
+  const name = arg('name');
+  const adminEmail = arg('admin-email');
+  if (!name) throw new Error('--name is required with --real');
+  if (!adminEmail) throw new Error('--admin-email is required with --real');
+
+  console.log(`\n▶ Provisioning PRODUCTION tenant "${slug}"…`);
+  const r = await provisionRealTenant({
+    slug,
+    name,
+    adminEmail,
+    adminName: arg('admin-name'),
+    branding: {
+      programName: arg('program-name'),
+      primaryColor: arg('primary-color'),
+      secondaryColor: arg('secondary-color'),
+      locale: arg('locale'),
+      logoUrl: arg('logo-url'),
+    },
+  });
+
+  if (r.alreadyExisted) {
+    console.log(`\n⚠ Tenant "${slug}" already exists — skipped (idempotent).`);
+    console.log(`  Login: ${r.loginUrlDev}  |  ${r.loginUrlProd}`);
+    return;
+  }
+
+  console.log(`\n✓ Production tenant provisioned: ${r.tenant.name} (${r.tenant.slug}) [${r.tenant.id}]`);
+  console.log(`  Default program + branding configured. No demo data seeded.`);
+  console.log(`  Admin: ${r.admin.email} (role=admin) — account active, password NOT set yet.`);
+  console.log(`\n  Set-password — send this to the admin:`);
+  console.log(`    Confirm endpoint (host selects the tenant):`);
+  console.log(`      ${r.setPasswordConfirmUrlProd}`);
+  console.log(`    One-time token (valid 7 days):`);
+  console.log(`      ${r.setPasswordToken}`);
+  console.log(`    Example:`);
+  console.log(`      curl -X POST ${r.setPasswordConfirmUrlProd} \\`);
+  console.log(`        -H 'Content-Type: application/json' \\`);
+  console.log(`        -d '{"token":"${r.setPasswordToken}","password":"<NEW_PASSWORD min 8 chars>"}'`);
+  console.log(`    (A friendly set-password page ships in Phase 2.)`);
+  console.log(`\n  After setting the password, log in:`);
+  console.log(`    dev : ${r.loginUrlDev}`);
+  console.log(`    prod: ${r.loginUrlProd}\n`);
+}
+
+async function runDemo(): Promise<void> {
   const slug = arg('slug', 'acme')!;
   const name = arg('name');
   const password = arg('password');
 
-  if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(slug)) {
+  if (!SLUG_RE.test(slug)) {
     throw new Error(`invalid slug: ${slug}`);
   }
 
@@ -48,6 +106,11 @@ async function main(): Promise<void> {
   for (const m of r.mentors) console.log(`    mentor: ${m.email}`);
   for (const m of r.mentees) console.log(`    mentee: ${m.email}`);
   console.log(`    password: ${r.password}\n`);
+}
+
+async function main(): Promise<void> {
+  if (process.argv.includes('--real')) return runReal();
+  return runDemo();
 }
 
 main()

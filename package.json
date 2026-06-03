@@ -16,6 +16,7 @@
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "prisma:validate": "prisma validate",
     "provision": "tsx src/provisioning/cli.ts",
+    "provision:real": "tsx src/provisioning/cli.ts --real",
     "seed:demo": "tsx src/provisioning/cli.ts --slug acme --name \"Acme (Demo)\"",
     "smoke": "node scripts/smoke.mjs"
   },
