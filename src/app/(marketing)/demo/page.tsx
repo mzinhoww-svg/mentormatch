@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: 'Solicitar Demonstração',
   description:
     'Veja o MentorMatch em ação na sua empresa. Conte um pouco sobre seu time e agendamos uma demonstração.',
-  openGraph: { title: 'Solicitar Demonstração · MentorMatch', description: 'Agende uma demonstração do MentorMatch.' },
+  openGraph: { title: 'Solicitar Demonstração · MentorMatch', description: 'Agende uma demonstração do MentorMatch.', images: ['/og.png'] },
 };
 
 export default function DemoPage() {

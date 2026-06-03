@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'MentorMatch — o conhecimento circula',
     description: 'Plataforma de mentoria corporativa. Solicite uma demonstração.',
+    images: ['/og.png'],
   },
 };
 
@@ -18,7 +19,12 @@ export default function HomePage() {
       <section className="mk-hero">
         <div className="mk-wrap" style={{ position: 'relative' }}>
           <div className="mk-hero-mark">
-            <Mark size={420} ink="var(--tinta-900)" accent="var(--brand-primary)" />
+            <Mark
+              size={420}
+              ink="var(--tinta-900)"
+              accent="var(--brand-primary)"
+              className="mm-live"
+            />
           </div>
           <div className="mk-eyebrow">SaaS de mentoria corporativa</div>
           <h1 className="mk-h1">

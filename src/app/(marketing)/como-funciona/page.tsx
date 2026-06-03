@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: 'Como Funciona',
   description:
     'Mentores se disponibilizam, mentorados buscam, a conexão acontece por solicitação, as sessões são agendadas e o feedback fecha o ciclo. Veja como o MentorMatch faz o conhecimento circular.',
-  openGraph: { title: 'Como Funciona · MentorMatch', description: 'Mentor, mentorado, busca, solicitação, sessão e feedback.' },
+  openGraph: { title: 'Como Funciona · MentorMatch', description: 'Mentor, mentorado, busca, solicitação, sessão e feedback.', images: ['/og.png'] },
 };
 
 export default function ComoFuncionaPage() {
