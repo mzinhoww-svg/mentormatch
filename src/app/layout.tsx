@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import { sans, serif, mono } from './fonts.js';
 import { siteUrl } from '../marketing/seo.js';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
@@ -33,7 +34,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
