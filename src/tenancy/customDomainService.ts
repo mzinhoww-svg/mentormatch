@@ -22,6 +22,7 @@ import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
 import { logger } from '../observability/logger.js';
 import { addDomainToEdge, verifyDomainOnEdge } from './vercelDomains.js';
+import { clearTenantResolutionCache } from './admin.js';
 
 export interface CustomDomain {
   id: string;
@@ -118,6 +119,8 @@ export async function addCustomDomain(tenantId: string, domain: string): Promise
   if (!edge.ok && !edge.skipped) {
     logger.warn('custom_domain.edge_register_failed', { tenantId, domain: d, error: edge.error });
   }
+  // Re-adding un-verifies the domain (verified=false), which changes resolution.
+  clearTenantResolutionCache();
   return result;
 }
 
@@ -160,6 +163,8 @@ export async function verifyCustomDomain(
     )
   ).rows[0]!;
   logger.info('custom_domain.verified', { tenantId, domain: d });
+  // A newly-verified domain now resolves — drop any cached NO_TENANT for it.
+  clearTenantResolutionCache();
 
   // Best-effort: ask the edge (Vercel) to (re)check its own challenge too.
   const edge = await verifyDomainOnEdge(d);
@@ -175,4 +180,6 @@ export async function removeCustomDomain(tenantId: string, domain: string): Prom
     tenantId,
     normalizeDomain(domain),
   ]);
+  // A removed domain must stop resolving immediately.
+  clearTenantResolutionCache();
 }

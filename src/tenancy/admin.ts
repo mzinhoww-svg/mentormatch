@@ -11,6 +11,7 @@ import { appPool, ownerPool } from './pool.js';
 import { resolveTenantFromHost, type TenantResolution } from './resolveTenant.js';
 import { normalizeDomain } from './customDomain.js';
 import { ensureDefaultProgram } from '../program/programService.js';
+import { TtlCache, cacheTtlMs } from '../cache/ttlCache.js';
 
 export interface TenantRecord {
   id: string;
@@ -29,6 +30,9 @@ export async function createTenant(input: { slug: string; name: string }): Promi
   if (!row) throw new Error('createTenant: insert returned no row');
   // Every tenant has a default mentoring program from the start.
   await ensureDefaultProgram(row.id);
+  // A previously-resolved host may have been cached as NO_TENANT; drop it so the
+  // new tenant resolves immediately.
+  clearTenantResolutionCache();
   return row;
 }
 
@@ -78,7 +82,32 @@ export async function findTenantByCustomDomain(
   return res.rows[0] ?? null;
 }
 
+/**
+ * Host → resolution cache. Tenant resolution (a registry read) is on EVERY
+ * authenticated request and every /api/* call, but the host→tenant mapping and
+ * status change rarely, so we cache per host with a short TTL. Writers that can
+ * change a mapping/status (createTenant, setTenantRegistryStatus) clear it, so
+ * suspensions/creations take effect immediately within a process; across
+ * instances staleness is bounded by the TTL. Set MM_TENANT_CACHE_TTL_MS=0 to
+ * disable. Cached values are non-sensitive (id/slug/name/status).
+ */
+const resolutionCache = new TtlCache<ActiveTenantResolution>(
+  cacheTtlMs('MM_TENANT_CACHE_TTL_MS', 20_000),
+);
+
+/** Clears the host→tenant resolution cache (call after registry mutations). */
+export function clearTenantResolutionCache(): void {
+  resolutionCache.clear();
+}
+
 export async function resolveActiveTenant(
+  rawHost: string | undefined | null,
+): Promise<ActiveTenantResolution> {
+  const key = String(rawHost ?? '').trim().toLowerCase();
+  return resolutionCache.getOrLoad(key, () => resolveActiveTenantUncached(rawHost));
+}
+
+async function resolveActiveTenantUncached(
   rawHost: string | undefined | null,
 ): Promise<ActiveTenantResolution> {
   const resolution = resolveTenantFromHost(rawHost);
@@ -151,5 +180,8 @@ export async function setTenantRegistryStatus(
   );
   const row = res.rows[0];
   if (!row) throw new Error('setTenantRegistryStatus: tenant not found');
+  // Status gates login resolution — invalidate so a suspend/reactivate is
+  // effective immediately (not after the cache TTL).
+  clearTenantResolutionCache();
   return row;
 }

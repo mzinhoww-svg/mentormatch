@@ -7,6 +7,7 @@
 import { withTenant } from '../tenancy/withTenant.js';
 import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
+import { TtlCache, cacheTtlMs } from '../cache/ttlCache.js';
 import { recordSettingsEvent } from './audit.js';
 import {
   resolveBranding,
@@ -69,15 +70,34 @@ const SELECT_ROW = `
   display_name, logo_url, primary_color, secondary_color, font_family, border_radius,
   program_name, locale, status, allow_self_signup, default_mentor_capacity`;
 
+/**
+ * Settings/branding cache, keyed by tenantId. getSettings is on hot paths (the
+ * authed shell, the login/branding endpoint), but settings change rarely and
+ * only via the writers below — which invalidate the entry — so reads stay fresh
+ * within a process and at most TTL-stale across instances. Set
+ * MM_SETTINGS_CACHE_TTL_MS=0 to disable. Cached data is public branding +
+ * non-sensitive flags; nothing tenant-crossing (keyed by tenantId).
+ */
+const settingsCache = new TtlCache<TenantSettings>(
+  cacheTtlMs('MM_SETTINGS_CACHE_TTL_MS', 60_000),
+);
+
+/** Drops the cached settings for a tenant (call after any settings write). */
+export function invalidateSettingsCache(tenantId: string): void {
+  settingsCache.delete(tenantId);
+}
+
 /** Returns the tenant's fully-resolved settings (brand-kit defaults if no row). */
 export async function getSettings(tenantId: string): Promise<TenantSettings> {
-  return withTenant(tenantId, async (db) => {
-    const res = await db.query<SettingsRow>(
-      `SELECT ${SELECT_ROW} FROM tenant_settings WHERE tenant_id = $1`,
-      [tenantId],
-    );
-    return toSettings(res.rows[0]);
-  });
+  return settingsCache.getOrLoad(tenantId, () =>
+    withTenant(tenantId, async (db) => {
+      const res = await db.query<SettingsRow>(
+        `SELECT ${SELECT_ROW} FROM tenant_settings WHERE tenant_id = $1`,
+        [tenantId],
+      );
+      return toSettings(res.rows[0]);
+    }),
+  );
 }
 
 /**
@@ -165,6 +185,7 @@ export async function updateSettings(
     return toSettings(res.rows[0]);
   });
 
+  invalidateSettingsCache(tenantId);
   await recordSettingsEvent(tenantId, 'settings.updated', {
     actorId: adminId,
     metadata: {
@@ -196,6 +217,7 @@ export async function setTenantLogo(
     );
     return toSettings(res.rows[0]);
   });
+  invalidateSettingsCache(tenantId);
   await recordSettingsEvent(tenantId, 'settings.updated', {
     actorId: adminId,
     metadata: { brandingChanged: true, logoChanged: true },
@@ -220,6 +242,7 @@ export async function setTenantStatus(
       [tenantId, status],
     ),
   );
+  invalidateSettingsCache(tenantId);
   await recordSettingsEvent(tenantId, 'settings.status_changed', {
     actorId: adminId,
     metadata: { status },
