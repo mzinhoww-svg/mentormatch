@@ -54,6 +54,12 @@ export type TenantResolution =
 /** A tenant slug must be a clean DNS label and not reserved. */
 const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
+/** True when `slug` is a syntactically valid DNS label (ignores reserved list).
+ *  Shared so provisioning and host-resolution can't drift on what a slug is. */
+export function isValidSlugFormat(slug: string): boolean {
+  return SLUG_RE.test(slug);
+}
+
 function stripPort(host: string): string {
   if (host.startsWith('[')) {
     const end = host.indexOf(']');

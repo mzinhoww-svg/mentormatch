@@ -404,6 +404,11 @@ a.card:hover .stat-go { gap: 8px; }
 .admin-toolbar .input { max-width: 320px; }
 .admin-count { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--muted); margin-left: auto; }
 
+/* member invite form — fields sit in a wrapping row, button trails */
+.admin-invite { display: flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap; }
+.admin-invite .field { margin-bottom: 0; flex: 1 1 200px; }
+.admin-invite .btn { flex: 0 0 auto; }
+
 /* logo upload + design.md import */
 .logo-row { display: flex; align-items: center; gap: var(--sp-4); }
 .logo-box { width: 72px; height: 72px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--paper-2); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; }

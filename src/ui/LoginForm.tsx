@@ -111,8 +111,11 @@ export function LoginForm() {
             {busy ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
+        <p className="muted" style={{ fontSize: 13, marginTop: 'var(--sp-4)' }}>
+          <a href="/forgot-password">Esqueci minha senha</a>
+        </p>
         {allowSignup ? (
-          <p className="muted" style={{ fontSize: 13, marginTop: 'var(--sp-4)' }}>
+          <p className="muted" style={{ fontSize: 13, marginTop: 'var(--sp-2)' }}>
             Novo por aqui? <a href="/signup">Criar conta</a>.
           </p>
         ) : null}

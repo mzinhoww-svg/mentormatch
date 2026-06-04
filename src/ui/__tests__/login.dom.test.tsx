@@ -44,4 +44,26 @@ describe('LoginForm (proof 1: login renders & respects tenant)', () => {
     // Same-origin relative path only (no cross-tenant origin).
     expect(login?.url.startsWith('/api/')).toBe(true);
   });
+
+  it('offers a self-serve "forgot password" link', async () => {
+    installFetch({
+      'GET /api/branding': {
+        body: {
+          branding: {
+            displayName: 'Acme Corp',
+            logoUrl: null,
+            primaryColor: '#0A0A0A',
+            secondaryColor: '#1B5C4C',
+            inkColor: '#14100D',
+            paperColor: '#FBF7F0',
+            programName: 'Mentoria Acme',
+            locale: 'pt-BR',
+          },
+        },
+      },
+    });
+    render(<LoginForm />);
+    const link = await screen.findByRole('link', { name: /esqueci minha senha/i });
+    expect(link.getAttribute('href')).toBe('/forgot-password');
+  });
 });

@@ -39,7 +39,7 @@ export function buildSetPasswordEmail(ctx: SetPasswordEmailContext): {
   const subject = `Acesso ao ${ctx.tenantName}: defina sua senha`;
   const body =
     `${hi}\n\n` +
-    `Sua conta de administrador no ${ctx.tenantName} foi criada. ` +
+    `Sua conta no ${ctx.tenantName} foi criada. ` +
     `Defina sua senha de acesso pelo link abaixo (válido por ${ctx.validDays} dias):\n\n` +
     `${ctx.setPasswordUrl}\n\n` +
     `Se você não reconhece este convite, ignore este e-mail.\n\n` +
@@ -65,6 +65,49 @@ export async function sendSetPasswordEmail(
       templateKey,
       tenantId,
       originEvent: SET_PASSWORD_ORIGIN_EVENT,
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** The template key recorded for a password-reset email. */
+export const RESET_PASSWORD_TEMPLATE_KEY = 'auth.password_reset';
+
+/** Pure: renders the "forgot password" email. The token defaults to a short TTL
+ *  (~1h), so the copy says so regardless of validDays. */
+export function buildResetPasswordEmail(ctx: SetPasswordEmailContext): {
+  subject: string;
+  body: string;
+  templateKey: string;
+} {
+  const hi = ctx.recipientName ? `Olá, ${ctx.recipientName}.` : 'Olá.';
+  const subject = `Redefinir sua senha — ${ctx.tenantName}`;
+  const body =
+    `${hi}\n\n` +
+    `Recebemos um pedido para redefinir sua senha no ${ctx.tenantName}. ` +
+    `Crie uma nova senha pelo link abaixo (válido por aproximadamente 1 hora):\n\n` +
+    `${ctx.setPasswordUrl}\n\n` +
+    `Se não foi você, ignore este e-mail — sua senha atual continua válida.\n\n` +
+    `— ${ctx.tenantName} · Passe adiante.`;
+  return { subject, body, templateKey: RESET_PASSWORD_TEMPLATE_KEY };
+}
+
+/** Sends the password-reset email (never throws). */
+export async function sendResetPasswordEmail(
+  ctx: SetPasswordEmailContext,
+  tenantId: string,
+  provider: EmailProvider = getEmailProvider(),
+): Promise<SendResult> {
+  const { subject, body, templateKey } = buildResetPasswordEmail(ctx);
+  try {
+    return await provider.send({
+      to: ctx.to,
+      subject,
+      body,
+      templateKey,
+      tenantId,
+      originEvent: 'auth.password_reset_requested',
     });
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
