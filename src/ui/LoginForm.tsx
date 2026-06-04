@@ -39,11 +39,15 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [allowSignup, setAllowSignup] = useState(false);
 
   useEffect(() => {
     api
-      .get<{ branding: Branding }>('/api/branding')
-      .then((r) => setBranding(r.branding))
+      .get<{ branding: Branding; allowSelfSignup?: boolean }>('/api/branding')
+      .then((r) => {
+        setBranding(r.branding);
+        setAllowSignup(Boolean(r.allowSelfSignup));
+      })
       .catch(() => {});
   }, []);
 
@@ -105,6 +109,11 @@ export function LoginForm() {
             {busy ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
+        {allowSignup ? (
+          <p className="muted" style={{ fontSize: 13, marginTop: 'var(--sp-4)' }}>
+            Novo por aqui? <a href="/signup">Criar conta</a>.
+          </p>
+        ) : null}
       </div>
     </div>
   );
