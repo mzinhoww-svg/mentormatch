@@ -11,5 +11,5 @@ export default async function ConsolePage() {
   const h = await headers();
   const admin = await requirePlatformAdmin(h.get('host'), h.get('cookie')).catch(() => null);
   if (!admin) redirect('/console/login');
-  return <PlatformConsole adminEmail={admin.email} />;
+  return <PlatformConsole adminEmail={admin.email} adminId={admin.id} />;
 }

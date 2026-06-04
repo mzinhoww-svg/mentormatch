@@ -41,6 +41,15 @@ export async function findTenantBySlug(slug: string): Promise<TenantRecord | nul
   return res.rows[0] ?? null;
 }
 
+/** Looks up a tenant by id (platform-level registry read; runs as mm_owner). */
+export async function getTenantById(tenantId: string): Promise<TenantRecord | null> {
+  const res = await ownerPool().query<TenantRecord>(
+    'SELECT id, slug, name, status FROM tenant WHERE id = $1',
+    [tenantId],
+  );
+  return res.rows[0] ?? null;
+}
+
 export type ActiveTenantResolution =
   | { kind: 'TENANT'; tenant: TenantRecord }
   | { kind: 'NO_TENANT'; resolution: TenantResolution; reason: string };

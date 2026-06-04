@@ -135,3 +135,79 @@ export async function changePlatformPassword(
   );
   logger.info('platform.password_changed', { adminId });
 }
+
+/** Lists all platform admins (owner-only registry read). Newest first. */
+export async function listPlatformAdmins(): Promise<PlatformAdmin[]> {
+  const res = await ownerPool().query<AdminRow>(
+    `SELECT id, email, display_name, status FROM platform_admin ORDER BY created_at DESC`,
+  );
+  return res.rows.map(toAdmin);
+}
+
+/**
+ * Adds a NEW platform admin from the console (authenticated path — the calling
+ * admin is gated by requirePlatformAdmin at the route). Unlike the bootstrap
+ * `createPlatformAdmin`, this never upserts: a duplicate email throws `email_taken`
+ * so an existing admin's password can't be silently reset. The new admin signs in
+ * with the initial password and can change it via `changePlatformPassword`.
+ */
+export async function addPlatformAdmin(input: {
+  email: string;
+  password: string;
+  displayName?: string;
+}): Promise<PlatformAdmin> {
+  const email = (input.email || '').trim();
+  if (!EMAIL_RE.test(email)) throw expectedError(ErrorCode.VALIDATION, 'invalid_email');
+  if (!input.password || input.password.length < MIN_PASSWORD_LENGTH) {
+    throw expectedError(ErrorCode.VALIDATION, 'weak_password');
+  }
+  const passwordHash = await hashPassword(input.password);
+  try {
+    const res = await ownerPool().query<AdminRow>(
+      `INSERT INTO platform_admin (email, normalized_email, display_name, password_hash)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, email, display_name, status`,
+      [email, normalizeEmail(email), input.displayName ?? null, passwordHash],
+    );
+    const admin = toAdmin(res.rows[0]!);
+    logger.info('platform.admin_added', { adminId: admin.id });
+    return admin;
+  } catch (err) {
+    if (err && typeof err === 'object' && (err as { code?: string }).code === '23505') {
+      throw expectedError(ErrorCode.CONFLICT, 'email_taken');
+    }
+    throw err;
+  }
+}
+
+/**
+ * Suspends or reactivates another platform admin. Guards against operator
+ * lockout: an admin can't change their OWN status, and the LAST active admin
+ * can't be suspended.
+ */
+export async function setPlatformAdminStatus(
+  targetId: string,
+  status: 'active' | 'suspended',
+  actingAdminId: string,
+): Promise<PlatformAdmin> {
+  if (targetId === actingAdminId) {
+    throw expectedError(ErrorCode.VALIDATION, 'cannot_change_own_status');
+  }
+  if (status === 'suspended') {
+    const active = await ownerPool().query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM platform_admin WHERE status = 'active'`,
+    );
+    if ((active.rows[0]?.n ?? 0) <= 1) {
+      throw expectedError(ErrorCode.VALIDATION, 'cannot_suspend_last_admin');
+    }
+  }
+  const res = await ownerPool().query<AdminRow>(
+    `UPDATE platform_admin SET status = $2, updated_at = now() WHERE id = $1
+     RETURNING id, email, display_name, status`,
+    [targetId, status],
+  );
+  const row = res.rows[0];
+  if (!row) throw expectedError(ErrorCode.NOT_FOUND, 'platform_admin_not_found');
+  logger.info('platform.admin_status_changed', { adminId: actingAdminId, targetId, status });
+  return toAdmin(row);
+}

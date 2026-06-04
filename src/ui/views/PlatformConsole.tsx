@@ -9,15 +9,21 @@ import { api } from '../api.js';
 import { Loading, Banner, useResource, errorMessage } from '../components.js';
 import { TenantEditor } from './TenantEditor.js';
 
+interface TenantUsage {
+  users: number;
+  mentorships: number;
+  sessions: number;
+}
 interface TenantRow {
   id: string;
   slug: string;
   name: string;
   status: string;
   createdAt: string;
+  usage?: TenantUsage;
 }
 
-export function PlatformConsole({ adminEmail }: { adminEmail: string }) {
+export function PlatformConsole({ adminEmail, adminId }: { adminEmail: string; adminId: string }) {
   const tenants = useResource<{ tenants: TenantRow[] }>(() => api.get('/api/platform/tenants'));
 
   async function logout() {
@@ -54,6 +60,8 @@ export function PlatformConsole({ adminEmail }: { adminEmail: string }) {
               rows.map((t) => <TenantRowItem key={t.id} tenant={t} onChanged={() => tenants.reload()} />)
             )}
           </section>
+
+          <PlatformAdmins currentAdminId={adminId} />
 
           <ChangePassword />
         </div>
@@ -94,6 +102,11 @@ function TenantRowItem({ tenant, onChanged }: { tenant: TenantRow; onChanged: ()
             {tenant.slug} · {open ? 'fechar' : 'personalizar'}
           </div>
         </button>
+        {tenant.usage ? (
+          <span className="mono muted" style={{ fontSize: 12 }} title="usuários · mentorias ativas · sessões">
+            {tenant.usage.users}u · {tenant.usage.mentorships}m · {tenant.usage.sessions}s
+          </span>
+        ) : null}
         <span className={`tag ${active ? 'tag-green' : 'tag-gray'}`}>{active ? 'ativo' : 'suspenso'}</span>
         <button className="btn btn-ghost btn-sm" onClick={toggle} disabled={busy}>
           {active ? 'Suspender' : 'Reativar'}
@@ -188,6 +201,126 @@ function ProvisionForm({ onProvisioned }: { onProvisioned: () => void }) {
         {busy ? 'Provisionando…' : 'Provisionar'}
       </button>
     </form>
+  );
+}
+
+interface AdminRow {
+  id: string;
+  email: string;
+  displayName: string | null;
+  status: string;
+}
+
+function adminErrorMessage(code: string): string {
+  switch (code) {
+    case 'email_taken':
+      return 'Já existe um admin com esse e-mail.';
+    case 'weak_password':
+      return 'A senha precisa ter ao menos 8 caracteres.';
+    case 'invalid_email':
+      return 'E-mail inválido.';
+    case 'cannot_change_own_status':
+      return 'Você não pode alterar o seu próprio status.';
+    case 'cannot_suspend_last_admin':
+      return 'Não é possível suspender o último admin ativo.';
+    default:
+      return 'Não foi possível concluir. Tente novamente.';
+  }
+}
+
+/** Manage other platform operators: list, add (with an initial password), and
+ *  suspend/reactivate. The signed-in admin can't change their own status. */
+function PlatformAdmins({ currentAdminId }: { currentAdminId: string }) {
+  const admins = useResource<{ admins: AdminRow[] }>(() => api.get('/api/platform/admins'));
+  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [password, setPassword] = useState('');
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    if (password.length < 8) {
+      setMsg({ kind: 'error', text: 'A senha precisa ter ao menos 8 caracteres.' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post('/api/platform/admins', { email: email.trim(), displayName: displayName.trim() || undefined, password });
+      setMsg({ kind: 'ok', text: 'Admin adicionado.' });
+      setEmail('');
+      setDisplayName('');
+      setPassword('');
+      admins.reload();
+    } catch (err) {
+      setMsg({ kind: 'error', text: adminErrorMessage(errorMessage(err)) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setStatus(id: string, status: 'active' | 'suspended') {
+    setMsg(null);
+    try {
+      await api.post('/api/platform/admins/status', { adminId: id, status });
+      admins.reload();
+    } catch (err) {
+      setMsg({ kind: 'error', text: adminErrorMessage(errorMessage(err)) });
+    }
+  }
+
+  const rows = admins.data?.admins ?? [];
+
+  return (
+    <section className="card" style={{ marginTop: 'var(--sp-5)' }}>
+      <div className="card-h">Administradores da plataforma ({rows.length})</div>
+      {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
+      {admins.loading ? (
+        <Loading />
+      ) : admins.error ? (
+        <Banner kind="error">{admins.error}</Banner>
+      ) : (
+        rows.map((a) => {
+          const isActive = a.status === 'active';
+          const isSelf = a.id === currentAdminId;
+          return (
+            <div className="row-item" key={a.id}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <b>{a.displayName ?? a.email}</b>{' '}
+                <span className="muted" style={{ fontSize: 13 }}>{a.email}{isSelf ? ' (você)' : ''}</span>
+              </span>
+              <span className={`tag ${isActive ? 'tag-green' : 'tag-gray'}`}>{isActive ? 'ativo' : 'suspenso'}</span>
+              {isSelf ? null : (
+                <button className="btn btn-ghost btn-sm" onClick={() => setStatus(a.id, isActive ? 'suspended' : 'active')}>
+                  {isActive ? 'Suspender' : 'Reativar'}
+                </button>
+              )}
+            </div>
+          );
+        })
+      )}
+
+      <form onSubmit={add} style={{ marginTop: 'var(--sp-4)' }}>
+        <div className="grid grid-2">
+          <div className="field">
+            <label htmlFor="pa-email">E-mail</label>
+            <input id="pa-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label htmlFor="pa-name">Nome (opcional)</label>
+            <input id="pa-name" className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="pa-pw">Senha inicial</label>
+          <input id="pa-pw" className="input" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+        <button className="btn btn-primary" type="submit" disabled={busy}>
+          {busy ? 'Adicionando…' : 'Adicionar admin'}
+        </button>
+      </form>
+    </section>
   );
 }
 

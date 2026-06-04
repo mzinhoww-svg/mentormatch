@@ -1,5 +1,7 @@
 import { requirePlatformAdmin } from '../../../../platform/requirePlatformAdmin.js';
 import { listTenants } from '../../../../tenancy/admin.js';
+import { getUsageForTenants } from '../../../../platform/usage.js';
+import { recordPlatformEvent } from '../../../../platform/audit.js';
 import { provisionRealTenant } from '../../../../provisioning/provisioningService.js';
 import { json, respondError } from '../../../../auth/http.js';
 import { expectedError } from '../../../../observability/errors.js';
@@ -9,11 +11,13 @@ import { logger } from '../../../../observability/logger.js';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Lists all tenants (platform admin). */
+/** Lists all tenants with lightweight usage counts (platform admin). */
 export async function GET(request: Request): Promise<Response> {
   try {
     await requirePlatformAdmin(request.headers.get('host'), request.headers.get('cookie'));
-    return json({ tenants: await listTenants() });
+    const tenants = await listTenants();
+    const usage = await getUsageForTenants(tenants.map((t) => t.id));
+    return json({ tenants: tenants.map((t) => ({ ...t, usage: usage[t.id] })) });
   } catch (err) {
     return respondError(err);
   }
@@ -53,6 +57,13 @@ export async function POST(request: Request): Promise<Response> {
       alreadyExisted: result.alreadyExisted,
       emailSent: result.emailSent,
     });
+    if (!result.alreadyExisted) {
+      await recordPlatformEvent(result.tenant.id, 'platform.tenant_provisioned', {
+        adminId: admin.id,
+        targetId: result.admin.id,
+        metadata: { slug: result.tenant.slug, emailSent: result.emailSent },
+      });
+    }
     return json(
       {
         ok: true,
