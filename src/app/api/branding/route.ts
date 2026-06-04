@@ -1,6 +1,6 @@
 import { resolveActiveTenant } from '../../../tenancy/admin.js';
 import { json, respondError } from '../../../auth/http.js';
-import { getPublicBranding } from '../../../settings/settingsService.js';
+import { getSettings } from '../../../settings/settingsService.js';
 import { resolveBranding } from '../../../settings/branding.js';
 
 export const runtime = 'nodejs';
@@ -16,9 +16,10 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const resolution = await resolveActiveTenant(request.headers.get('host'));
     if (resolution.kind !== 'TENANT') {
-      return json({ branding: resolveBranding(null) });
+      return json({ branding: resolveBranding(null), allowSelfSignup: false });
     }
-    return json({ branding: await getPublicBranding(resolution.tenant.id) });
+    const settings = await getSettings(resolution.tenant.id);
+    return json({ branding: settings.branding, allowSelfSignup: settings.allowSelfSignup });
   } catch (err) {
     return respondError(err);
   }

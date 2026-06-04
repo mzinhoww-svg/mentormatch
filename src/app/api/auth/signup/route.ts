@@ -1,4 +1,6 @@
 import { signup } from '../../../../auth/authService.js';
+import { resolveActiveTenant } from '../../../../tenancy/admin.js';
+import { getSettings } from '../../../../settings/settingsService.js';
 import { createSessionToken } from '../../../../auth/session.js';
 import { serializeSessionCookie } from '../../../../auth/cookies.js';
 import { createRateLimiter } from '../../../../auth/rateLimit.js';
@@ -20,6 +22,14 @@ export async function POST(request: Request): Promise<Response> {
     const key = `${host ?? '-'}:${String(body.email ?? '').toLowerCase()}`;
     if (!limiter.check(key).allowed) {
       throw expectedError(ErrorCode.RATE_LIMITED, 'rate_limited');
+    }
+
+    // Self-signup must be enabled for this tenant (provisioning bypasses this by
+    // calling the service directly; only this public route enforces the flag).
+    const resolution = await resolveActiveTenant(host);
+    if (resolution.kind !== 'TENANT') throw expectedError(ErrorCode.UNAUTHORIZED, 'no_tenant');
+    if (!(await getSettings(resolution.tenant.id)).allowSelfSignup) {
+      throw expectedError(ErrorCode.VALIDATION, 'signup_disabled');
     }
 
     const user = await signup({
