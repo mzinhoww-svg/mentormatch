@@ -142,6 +142,9 @@ a { color: inherit; }
   background: color-mix(in srgb, var(--paper) 82%, transparent); backdrop-filter: blur(10px);
 }
 .topbar .slogan { font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 17px; }
+.topbar-bell { position: relative; display: inline-flex; color: var(--ink-2); padding: 6px; border-radius: var(--r-pill); transition: background var(--dur-1), color var(--dur-1); }
+.topbar-bell:hover { color: var(--ink); background: rgba(20,16,13,.05); }
+.topbar-bell-count { position: absolute; top: -2px; right: -4px; padding: 1px 6px; font-size: 10px; line-height: 1.4; }
 .content { padding: var(--sp-7); max-width: 1180px; width: 100%; }
 
 /* page header */
@@ -362,6 +365,7 @@ a.card:hover .stat-go { gap: 8px; }
 .skill-pill.sought { background: var(--brasa-100); color: var(--brasa-700); }
 .skill-pill button { background: none; border: none; cursor: pointer; color: inherit; opacity: .6; line-height: 0; padding: 2px; border-radius: 50%; }
 .skill-pill button:hover { opacity: 1; }
+.skill-pill .skill-lvl { font-style: normal; opacity: .7; padding-left: 6px; border-left: 1px solid currentColor; }
 .skill-add { display: flex; gap: 8px; margin-top: var(--sp-3); flex-wrap: wrap; }
 .skill-add .select { flex: 1; min-width: 160px; }
 

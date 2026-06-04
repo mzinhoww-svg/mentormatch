@@ -3,6 +3,8 @@ import { Mark } from '../../ui/Mark.js';
 import { HR_BENEFITS, HOW_IT_WORKS, METHOD_PROOF } from '../../marketing/content.js';
 import { HeroMockup } from '../../marketing/HeroMockup.js';
 import { Reveal } from '../../marketing/Reveal.js';
+import { FunnelTracker } from '../../marketing/FunnelTracker.js';
+import { TrackedCta } from '../../marketing/TrackedCta.js';
 
 export const metadata: Metadata = {
   title: 'Mentoria corporativa que faz o conhecimento circular',
@@ -18,6 +20,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <>
+      <FunnelTracker event="landing_view" />
       <section className="mk-hero">
         <div className="mk-wrap">
           <div className="mk-hero-grid">
@@ -34,7 +37,7 @@ export default function HomePage() {
                 plataformas de RH que só registram treinamentos, aqui o conhecimento <b>circula</b>.
               </p>
               <div className="mk-cta-row">
-                <a className="btn btn-primary" href="/demo">Solicitar Demonstração</a>
+                <TrackedCta event="landing_cta_demo" className="btn btn-primary" href="/demo">Solicitar Demonstração</TrackedCta>
                 <a className="btn btn-ghost" href="/como-funciona">Como funciona</a>
               </div>
             </div>
@@ -107,7 +110,7 @@ export default function HomePage() {
             ))}
           </div>
           <div className="mk-cta-row">
-            <a className="btn btn-primary" href="/demo">Solicitar Demonstração</a>
+            <TrackedCta event="landing_cta_demo" className="btn btn-primary" href="/demo">Solicitar Demonstração</TrackedCta>
             <a className="btn btn-ghost" href="/beneficios" style={{ color: 'var(--argila-100)' }}>
               Todos os benefícios
             </a>

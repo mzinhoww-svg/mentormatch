@@ -40,6 +40,52 @@ describe('ProfileView (proof 3: loads & saves)', () => {
   });
 });
 
+describe('ProfileView — skill levels (offered)', () => {
+  it('shows the level on an offered pill and posts the chosen level when adding', async () => {
+    const profile = {
+      body: {
+        ...PROFILE.body,
+        skills: {
+          offered: [{ id: '1', skillId: 's1', name: 'React', relation: 'offered', level: 'pleno' }],
+          sought: [],
+          interest: [],
+        },
+      },
+    };
+    const mock = installFetch({
+      'GET /api/profile': profile,
+      'GET /api/skills': { body: { skills: [{ id: 's2', name: 'Node' }] } },
+      'POST /api/profile/skills': { status: 201, body: { ok: true, userSkill: {} } },
+    });
+    const { container } = render(<ProfileView />);
+
+    // Existing offered skill renders its level label on the pill itself.
+    await screen.findByText('React');
+    expect(container.querySelector('.skill-pill.offered .skill-lvl')?.textContent).toBe('Pleno');
+
+    // Choose a level, type a new skill, press Enter to add it.
+    fireEvent.change(screen.getByLabelText(/Nível/), { target: { value: 'avancado' } });
+    const input = screen.getByLabelText('Adicionar habilidade (Habilidades que ofereço)');
+    fireEvent.change(input, { target: { value: 'Go' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => expect(calledWith(mock, 'POST', '/api/profile/skills')).toBe(true));
+    const post = mock.calls.find((c) => c.method === 'POST' && c.path === '/api/profile/skills');
+    expect(post?.body).toMatchObject({ name: 'Go', relation: 'offered', level: 'avancado' });
+  });
+
+  it('does not offer a level selector for sought skills', async () => {
+    installFetch({
+      'GET /api/profile': PROFILE,
+      'GET /api/skills': { body: { skills: [] } },
+    });
+    render(<ProfileView />);
+    await screen.findByText('React');
+    // Exactly one "Nível" selector exists — the offered one (not the sought editor).
+    expect(screen.getAllByLabelText(/Nível/)).toHaveLength(1);
+  });
+});
+
 describe('ProfileView (proof 9: no protected data without auth)', () => {
   it('shows an error and not the form when the API rejects (401)', async () => {
     installFetch({

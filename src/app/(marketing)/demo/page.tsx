@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { DemoForm } from '../../../marketing/DemoForm.js';
+import { FunnelTracker } from '../../../marketing/FunnelTracker.js';
 
 export const metadata: Metadata = {
   title: 'Solicitar Demonstração',
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export default function DemoPage() {
   return (
     <section className="mk-section">
+      <FunnelTracker event="demo_view" />
       <div className="mk-wrap">
         <div className="mk-two">
           <div>
