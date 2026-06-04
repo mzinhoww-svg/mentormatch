@@ -1,5 +1,6 @@
 import { requirePlatformAdmin } from '../../../../../platform/requirePlatformAdmin.js';
 import { getSettings, updateSettings } from '../../../../../settings/settingsService.js';
+import { recordPlatformEvent } from '../../../../../platform/audit.js';
 import { json, respondError } from '../../../../../auth/http.js';
 import { expectedError } from '../../../../../observability/errors.js';
 import { ErrorCode } from '../../../../../observability/error-codes.js';
@@ -36,6 +37,7 @@ export async function POST(request: Request): Promise<Response> {
       secondaryColor: str(body.secondaryColor),
       programName: str(body.programName),
     });
+    await recordPlatformEvent(tenantId, 'platform.tenant_branding_changed', { adminId: admin.id });
     return json({ ok: true, settings });
   } catch (err) {
     return respondError(err);

@@ -197,6 +197,121 @@ export function TenantEditor({ tenantId, tenantName }: { tenantId: string; tenan
           {busy ? 'Salvando…' : 'Salvar marca'}
         </button>
       </form>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: 'var(--sp-5) 0' }} />
+      <TenantAdminForm tenantId={tenantId} />
+      <ResendLinkForm tenantId={tenantId} />
     </div>
+  );
+}
+
+/** Set or add the admin of this tenant (promotes an existing user or invites a
+ *  new one with a set-password link). */
+function TenantAdminForm({ tenantId }: { tenantId: string }) {
+  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [link, setLink] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    setLink(null);
+    setBusy(true);
+    try {
+      const r = await api.post<{ created: boolean; emailSent: boolean; setPasswordUrl?: string }>(
+        '/api/platform/tenants/admin',
+        { tenantId, email: email.trim(), displayName: displayName.trim() || undefined },
+      );
+      if (r.created) {
+        setMsg({
+          kind: 'ok',
+          text: r.emailSent
+            ? 'Admin criado — link de definição de senha enviado por e-mail.'
+            : 'Admin criado — e-mail NÃO enviado; envie o link abaixo.',
+        });
+        if (!r.emailSent && r.setPasswordUrl) setLink(r.setPasswordUrl);
+      } else {
+        setMsg({ kind: 'ok', text: 'Usuário existente promovido a admin.' });
+      }
+      setEmail('');
+      setDisplayName('');
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} style={{ marginBottom: 'var(--sp-4)' }}>
+      <div className="card-h">Admin do tenant</div>
+      {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
+      {link ? (
+        <p className="mono" style={{ fontSize: 12, wordBreak: 'break-all', marginBottom: 'var(--sp-3)' }}>{link}</p>
+      ) : null}
+      <div className="grid grid-2">
+        <div className="field">
+          <label htmlFor={`ta-email-${tenantId}`}>E-mail</label>
+          <input id={`ta-email-${tenantId}`} className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div className="field">
+          <label htmlFor={`ta-name-${tenantId}`}>Nome (opcional)</label>
+          <input id={`ta-name-${tenantId}`} className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+        </div>
+      </div>
+      <button className="btn btn-ghost btn-sm" type="submit" disabled={busy}>
+        {busy ? 'Salvando…' : 'Definir admin'}
+      </button>
+    </form>
+  );
+}
+
+/** Resend a fresh set-password link to an existing user of this tenant. */
+function ResendLinkForm({ tenantId }: { tenantId: string }) {
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [link, setLink] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    setLink(null);
+    setBusy(true);
+    try {
+      const r = await api.post<{ emailSent: boolean; setPasswordUrl: string }>(
+        '/api/platform/tenants/resend',
+        { tenantId, email: email.trim() },
+      );
+      setMsg({
+        kind: 'ok',
+        text: r.emailSent ? 'Link reenviado por e-mail.' : 'E-mail NÃO enviado; use o link abaixo.',
+      });
+      if (!r.emailSent) setLink(r.setPasswordUrl);
+      setEmail('');
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(err) === 'user_not_found' ? 'Nenhum usuário com esse e-mail neste tenant.' : errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <div className="card-h">Reenviar link de senha</div>
+      {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
+      {link ? (
+        <p className="mono" style={{ fontSize: 12, wordBreak: 'break-all', marginBottom: 'var(--sp-3)' }}>{link}</p>
+      ) : null}
+      <div className="field">
+        <label htmlFor={`rl-email-${tenantId}`}>E-mail do usuário</label>
+        <input id={`rl-email-${tenantId}`} className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+      <button className="btn btn-ghost btn-sm" type="submit" disabled={busy}>
+        {busy ? 'Enviando…' : 'Reenviar link'}
+      </button>
+    </form>
   );
 }

@@ -2,6 +2,7 @@ import { put } from '@vercel/blob';
 import { requirePlatformAdmin } from '../../../../../platform/requirePlatformAdmin.js';
 import { setTenantLogo } from '../../../../../settings/settingsService.js';
 import { validateLogoUpload } from '../../../../../settings/logoUpload.js';
+import { recordPlatformEvent } from '../../../../../platform/audit.js';
 import { json, respondError } from '../../../../../auth/http.js';
 import { expectedError } from '../../../../../observability/errors.js';
 import { ErrorCode } from '../../../../../observability/error-codes.js';
@@ -32,6 +33,7 @@ export async function POST(request: Request): Promise<Response> {
       addRandomSuffix: true,
     });
     const settings = await setTenantLogo(tenantId, admin.id, blob.url);
+    await recordPlatformEvent(tenantId, 'platform.tenant_logo_changed', { adminId: admin.id });
     return json({ ok: true, url: blob.url, settings });
   } catch (err) {
     return respondError(err);
@@ -49,6 +51,10 @@ export async function DELETE(request: Request): Promise<Response> {
     const tenantId = typeof body.tenantId === 'string' ? body.tenantId : '';
     if (!tenantId) throw expectedError(ErrorCode.VALIDATION, 'tenantId_required');
     const settings = await setTenantLogo(tenantId, admin.id, null);
+    await recordPlatformEvent(tenantId, 'platform.tenant_logo_changed', {
+      adminId: admin.id,
+      metadata: { removed: true },
+    });
     return json({ ok: true, settings });
   } catch (err) {
     return respondError(err);
