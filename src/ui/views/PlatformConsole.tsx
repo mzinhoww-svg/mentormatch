@@ -7,6 +7,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../api.js';
 import { Loading, Banner, useResource, errorMessage } from '../components.js';
+import { TenantEditor } from './TenantEditor.js';
 
 interface TenantRow {
   id: string;
@@ -63,6 +64,7 @@ export function PlatformConsole({ adminEmail }: { adminEmail: string }) {
 
 function TenantRowItem({ tenant, onChanged }: { tenant: TenantRow; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const active = tenant.status === 'active';
 
   async function toggle() {
@@ -79,15 +81,25 @@ function TenantRowItem({ tenant, onChanged }: { tenant: TenantRow; onChanged: ()
   }
 
   return (
-    <div className="row-item">
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600 }}>{tenant.name}</div>
-        <div className="mono muted" style={{ fontSize: 12 }}>{tenant.slug}</div>
+    <div>
+      <div className="row-item">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{tenant.name}</div>
+          <div className="mono muted" style={{ fontSize: 12 }}>
+            {tenant.slug} · {open ? 'fechar' : 'personalizar'}
+          </div>
+        </button>
+        <span className={`tag ${active ? 'tag-green' : 'tag-gray'}`}>{active ? 'ativo' : 'suspenso'}</span>
+        <button className="btn btn-ghost btn-sm" onClick={toggle} disabled={busy}>
+          {active ? 'Suspender' : 'Reativar'}
+        </button>
       </div>
-      <span className={`tag ${active ? 'tag-green' : 'tag-gray'}`}>{active ? 'ativo' : 'suspenso'}</span>
-      <button className="btn btn-ghost btn-sm" onClick={toggle} disabled={busy}>
-        {active ? 'Suspender' : 'Reativar'}
-      </button>
+      {open ? <TenantEditor tenantId={tenant.id} tenantName={tenant.name} /> : null}
     </div>
   );
 }
