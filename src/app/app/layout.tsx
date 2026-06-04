@@ -24,14 +24,19 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect('/login');
   }
 
-  const branding = await getServerBranding(host);
-  const displayName = await withTenant(session.tenantId, async (db) => {
-    const r = await db.query<{ display_name: string | null; email: string }>(
-      'SELECT display_name, email FROM tenant_user WHERE id = $1',
-      [session.userId],
-    );
-    return r.rows[0]?.display_name ?? r.rows[0]?.email ?? 'Usuário';
-  });
+  // Independent reads — fetch the branding and the user's display name
+  // concurrently (the tenant resolution inside getServerBranding is already
+  // cached by the requireSession call above, so this is a clean overlap).
+  const [branding, displayName] = await Promise.all([
+    getServerBranding(host),
+    withTenant(session.tenantId, async (db) => {
+      const r = await db.query<{ display_name: string | null; email: string }>(
+        'SELECT display_name, email FROM tenant_user WHERE id = $1',
+        [session.userId],
+      );
+      return r.rows[0]?.display_name ?? r.rows[0]?.email ?? 'Usuário';
+    }),
+  ]);
 
   return (
     <AppShell role={session.role} displayName={displayName} branding={branding}>

@@ -30,16 +30,40 @@ function isLocalConnection(connectionString: string): boolean {
   return /@(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:[/?]|$)/i.test(connectionString);
 }
 
+/**
+ * Pool sizing/timeouts tuned for serverless behind a transaction pooler
+ * (Supabase pgBouncer). Each warm function instance keeps a SMALL pool — the
+ * real connection multiplexing happens in pgBouncer, so a large per-instance
+ * `max` only risks exhausting the upstream. Timeouts fail fast instead of
+ * hanging a request, and a statement timeout caps any runaway query. All are
+ * env-overridable.
+ */
+function commonOptions(): PoolConfig {
+  const num = (name: string, dflt: number): number => {
+    const n = Number(process.env[name]);
+    return Number.isFinite(n) && n > 0 ? n : dflt;
+  };
+  return {
+    max: num('PG_POOL_MAX', 5),
+    connectionTimeoutMillis: num('PG_CONNECT_TIMEOUT_MS', 10_000),
+    idleTimeoutMillis: num('PG_IDLE_TIMEOUT_MS', 10_000),
+    statement_timeout: num('PG_STATEMENT_TIMEOUT_MS', 15_000),
+    query_timeout: num('PG_QUERY_TIMEOUT_MS', 15_000),
+    keepAlive: true,
+  };
+}
+
 function poolConfig(connectionString: string): PoolConfig {
+  const common = commonOptions();
   if (process.env.PGSSL === 'disable' || isLocalConnection(connectionString)) {
-    return { connectionString };
+    return { connectionString, ...common };
   }
   // Managed Postgres (Supabase/Neon/RDS) presents a private/self-signed CA chain
   // via the pooler. A `sslmode=require` in the URL forces certificate VERIFICATION
   // (→ SELF_SIGNED_CERT_IN_CHAIN) and overrides our ssl config, so strip it and
   // set SSL explicitly WITHOUT chain verification (we trust the host via the
   // secret URL, not the CA).
-  return { connectionString: stripSslmode(connectionString), ssl: { rejectUnauthorized: false } };
+  return { connectionString: stripSslmode(connectionString), ssl: { rejectUnauthorized: false }, ...common };
 }
 
 /** Removes any `sslmode` query param so it can't override our explicit ssl config. */

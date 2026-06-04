@@ -35,9 +35,11 @@ export async function withTenant<R>(
 
   const client: PoolClient = await appPool().connect();
   try {
-    await client.query('BEGIN');
-    // Parameterized; is_local = true => SET LOCAL semantics.
-    await client.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+    // One round trip instead of two: BEGIN + the transaction-scoped GUC are sent
+    // as a single simple-query batch. tenantId is a strict UUID (validated above),
+    // so inlining it carries no injection risk and avoids the extended-protocol
+    // round trip a parameterized set_config would cost.
+    await client.query(`BEGIN; SELECT set_config('app.tenant_id', '${tenantId}', true);`);
 
     const db: TenantDb = {
       async query(text, params) {
