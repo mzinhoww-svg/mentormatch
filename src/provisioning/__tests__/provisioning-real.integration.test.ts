@@ -102,6 +102,19 @@ describe.skipIf(!hasDb)('Real (production) tenant provisioning (integration)', (
     ).rejects.toThrow();
   });
 
+  it('normalizes an uppercase slug to lowercase (the broken-"Sicredi" bug)', async () => {
+    const suffix = rand();
+    const r = await provisionRealTenant({
+      slug: `Sicredi${suffix}`,
+      name: 'Sicredi',
+      adminEmail: `admin.${suffix}@sicredi.test`,
+    });
+    // Stored slug is the normalized DNS label, so the tenant host resolves.
+    expect(r.tenant.slug).toBe(`sicredi${suffix}`.toLowerCase());
+    const res = await resolveActiveTenant(`${r.tenant.slug}.localhost`);
+    expect(res.kind).toBe('TENANT');
+  });
+
   it('keeps real tenants isolated (A cannot see B)', async () => {
     const a = `acme${rand()}`;
     const b = `acme${rand()}`;

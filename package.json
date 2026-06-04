@@ -19,6 +19,7 @@
     "provision:real": "tsx src/provisioning/cli.ts --real",
     "seed:demo": "tsx src/provisioning/cli.ts --slug acme --name \"Acme (Demo)\"",
     "platform:admin": "tsx src/platform/cli.ts",
+    "cleanup:tenants": "node scripts/cleanup-test-data.mjs",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {

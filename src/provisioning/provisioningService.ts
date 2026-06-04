@@ -9,7 +9,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { createTenant, findTenantBySlug, type TenantRecord } from '../tenancy/admin.js';
-import { RESERVED_SUBDOMAINS, getBaseDomain } from '../tenancy/resolveTenant.js';
+import { RESERVED_SUBDOMAINS, getBaseDomain, isValidSlugFormat } from '../tenancy/resolveTenant.js';
 import { signup, login } from '../auth/authService.js';
 import { createResetToken } from '../auth/session.js';
 import { logger } from '../observability/logger.js';
@@ -57,11 +57,13 @@ export interface ProvisionInput {
 }
 
 export async function provisionDemoTenant(input: ProvisionInput): Promise<ProvisionResult> {
-  if (RESERVED_SUBDOMAINS.has(input.slug)) {
+  const slug = (input.slug || '').trim().toLowerCase();
+  if (!isValidSlugFormat(slug)) throw new Error('invalid_slug');
+  if (RESERVED_SUBDOMAINS.has(slug)) {
     // A reserved subdomain never resolves to a tenant host (login would fail).
-    throw new Error(`reserved_slug: "${input.slug}" cannot be a tenant slug`);
+    throw new Error(`reserved_slug: "${slug}" cannot be a tenant slug`);
   }
-  const plan = buildDemoPlan(input.slug, input.name);
+  const plan = buildDemoPlan(slug, input.name);
   const password = input.password ?? DEFAULT_DEMO_PASSWORD;
   const host = plan.host;
 
@@ -284,14 +286,16 @@ export async function provisionRealTenant(
   input: ProvisionRealInput,
   provider: EmailProvider = getEmailProvider(),
 ): Promise<ProvisionRealResult> {
-  if (RESERVED_SUBDOMAINS.has(input.slug)) {
-    throw new Error(`reserved_slug: "${input.slug}" cannot be a tenant slug`);
+  const slug = (input.slug || '').trim().toLowerCase();
+  if (!isValidSlugFormat(slug)) throw new Error('invalid_slug');
+  if (RESERVED_SUBDOMAINS.has(slug)) {
+    throw new Error(`reserved_slug: "${slug}" cannot be a tenant slug`);
   }
   if (!input.name || !input.name.trim()) throw new Error('name_required');
   const adminEmail = (input.adminEmail || '').trim();
   if (!ADMIN_EMAIL_RE.test(adminEmail)) throw new Error('invalid_admin_email');
 
-  const plan = buildRealPlan(input);
+  const plan = buildRealPlan({ ...input, slug });
   const host = plan.host;
   const mkAdmin = (id: string): ProvisionRealResult['admin'] => ({
     id,

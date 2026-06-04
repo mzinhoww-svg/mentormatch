@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { SkeletonGrid, EmptyState, Banner, StatusTag, ConfirmDialog, useResource } from '../components.js';
+import { SkeletonGrid, EmptyState, Banner, StatusTag, ConfirmDialog, useResource, errorMessage } from '../components.js';
 
 interface Overview {
   users: { active: number };
@@ -27,6 +27,101 @@ function Stat({ k, v }: { k: string; v: number | string }) {
       <div className="stat-k">{k}</div>
       <div className="stat-v" style={{ marginTop: 6 }}>{v}</div>
     </div>
+  );
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  member: 'Membro',
+  program_manager: 'Gestor(a) de programa',
+  admin: 'Administrador(a)',
+};
+
+/** Invite a new member by e-mail. The server creates the account and sends a
+ *  one-time set-password link; in dev the link is shown for copy/paste. */
+function InviteMember({ onInvited }: { onInvited: () => void }) {
+  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [role, setRole] = useState('member');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ emailSent: boolean; setPasswordUrl: string } | null>(null);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const r = await api.post<{ emailSent: boolean; setPasswordUrl: string }>('/api/admin/members', {
+        email: email.trim(),
+        displayName: displayName.trim() || undefined,
+        role,
+      });
+      setResult({ emailSent: r.emailSent, setPasswordUrl: r.setPasswordUrl });
+      setEmail('');
+      setDisplayName('');
+      setRole('member');
+      onInvited();
+    } catch (err) {
+      const code = errorMessage(err);
+      setError(code === 'email_taken' ? 'Já existe uma conta com esse e-mail.' : 'Não foi possível convidar. Tente novamente.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section style={{ marginTop: 'var(--sp-6)' }}>
+      <div className="eyebrow" style={{ marginBottom: 'var(--sp-3)' }}>Convidar membro</div>
+      <div className="card">
+        {error ? <Banner kind="error">{error}</Banner> : null}
+        {result ? (
+          <Banner kind="ok">
+            {result.emailSent
+              ? 'Convite enviado por e-mail com o link para definir a senha.'
+              : 'Conta criada. O envio de e-mail não está configurado — compartilhe o link abaixo:'}
+            {!result.emailSent ? (
+              <div style={{ marginTop: 6, wordBreak: 'break-all', fontSize: 13 }}>{result.setPasswordUrl}</div>
+            ) : null}
+          </Banner>
+        ) : null}
+        <form onSubmit={onSubmit} className="admin-invite">
+          <div className="field">
+            <label htmlFor="inv-email">E-mail</label>
+            <input
+              id="inv-email"
+              className="input"
+              type="email"
+              autoComplete="off"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="inv-name">Nome (opcional)</label>
+            <input
+              id="inv-name"
+              className="input"
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="inv-role">Papel</label>
+            <select id="inv-role" className="input" value={role} onChange={(e) => setRole(e.target.value)}>
+              {Object.entries(ROLE_LABELS).map(([v, label]) => (
+                <option key={v} value={v}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy ? 'Convidando…' : 'Enviar convite'}
+          </button>
+        </form>
+      </div>
+    </section>
   );
 }
 
@@ -73,6 +168,8 @@ export function AdminView() {
           </div>
         )}
       </section>
+
+      <InviteMember onInvited={() => users.reload()} />
 
       <section style={{ marginTop: 'var(--sp-6)' }}>
         <div className="eyebrow" style={{ marginBottom: 'var(--sp-3)' }}>Usuários do tenant</div>
