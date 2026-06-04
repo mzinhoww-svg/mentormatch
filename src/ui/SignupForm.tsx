@@ -19,6 +19,8 @@ const DEFAULTS: Branding = {
   paperColor: '#FBF7F0',
   programName: 'Programa de Mentoria',
   locale: 'pt-BR',
+  fontFamily: null,
+  borderRadius: null,
 };
 
 function signupErrorMessage(err: unknown): string {

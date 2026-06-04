@@ -11,8 +11,9 @@ describe('Home (renders + branding applied)', () => {
   it('renders the value proposition, brand symbol and primary CTA', () => {
     render(<HomePage />);
     expect(screen.getByText('Ele circula.')).toBeTruthy();
-    // Approved "A Corrente" symbol (not a monogram) is present.
-    expect(screen.getAllByLabelText('MentorMatch').length).toBeGreaterThan(0);
+    // Approved "A Corrente" symbol (not a monogram) is present in the hero.
+    // It is decorative (aria-hidden) now that the product mockup sits beside it.
+    expect(document.querySelector('.mk-hero-mark svg')).toBeTruthy();
     // Primary CTA appears.
     expect(screen.getAllByRole('link', { name: /solicitar demonstração/i }).length).toBeGreaterThan(0);
   });
@@ -21,11 +22,11 @@ describe('Home (renders + branding applied)', () => {
 describe('Navigation', () => {
   it('renders the marketing nav links and CTAs', () => {
     render(<MarketingNav />);
-    expect(screen.getByRole('link', { name: 'Como Funciona' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Planos' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Contato' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: /entrar/i })).toBeTruthy();
-    expect(screen.getByRole('link', { name: /solicitar demonstração/i })).toBeTruthy();
+    expect(screen.getAllByRole('link', { name: 'Como Funciona' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Planos' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Contato' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /entrar/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /solicitar demonstração/i }).length).toBeGreaterThan(0);
   });
 });
 

@@ -20,9 +20,9 @@ describe('SessionsView (proof 6: sessions appear & change status)', () => {
     });
     render(<SessionsView />);
 
-    expect(await screen.findByText('requested')).toBeTruthy();
+    expect(await screen.findByText('Solicitada')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /confirmar/i }));
-    expect(await screen.findByText('confirmed')).toBeTruthy();
+    expect(await screen.findByText('Confirmada')).toBeTruthy();
   });
 });
 
@@ -36,7 +36,7 @@ describe('SessionsView (Slice 12: rate a completed session)', () => {
       'POST /api/feedback/session': { status: 201, body: { ok: true, feedback: { id: 'f1', score: 5 } } },
     });
     render(<SessionsView />);
-    await screen.findByText('completed');
+    await screen.findByText('Concluída');
     fireEvent.click(screen.getByRole('button', { name: 'Nota 5' }));
     await waitFor(() => expect(calledWith(mock, 'POST', '/api/feedback/session')).toBe(true));
     const call = mock.calls.find((c) => c.path === '/api/feedback/session');

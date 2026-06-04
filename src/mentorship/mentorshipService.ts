@@ -21,9 +21,29 @@ export interface RequestRecord {
   createdAt: string;
 }
 
+/** Request enriched with counterpart display names and skill name for the UI. */
+export interface RequestView extends RequestRecord {
+  menteeName: string | null;
+  mentorName: string | null;
+  skillName: string | null;
+}
+
 const SELECT_REQUEST = `
   id, mentee_id AS "menteeId", mentor_id AS "mentorId", skill_id AS "skillId",
   status, created_at AS "createdAt"`;
+
+const SELECT_REQUEST_VIEW = `
+  r.id, r.mentee_id AS "menteeId", r.mentor_id AS "mentorId", r.skill_id AS "skillId",
+  r.status, r.created_at AS "createdAt",
+  mentee.display_name AS "menteeName",
+  mentor.display_name AS "mentorName",
+  sk.name AS "skillName"`;
+
+const FROM_REQUEST_VIEW = `
+  FROM mentorship_request r
+  LEFT JOIN tenant_user mentee ON mentee.id = r.mentee_id
+  LEFT JOIN tenant_user mentor ON mentor.id = r.mentor_id
+  LEFT JOIN skill sk ON sk.id = r.skill_id`;
 
 async function countActiveMentorships(db: TenantDb, mentorId: string): Promise<number> {
   const res = await db.query<{ c: number }>(
@@ -240,10 +260,11 @@ export async function expireRequests(tenantId: string): Promise<number> {
 export async function listRequestsForMentor(
   tenantId: string,
   mentorId: string,
-): Promise<RequestRecord[]> {
+): Promise<RequestView[]> {
   return withTenant(tenantId, async (db) => {
-    const res = await db.query<RequestRecord>(
-      `SELECT ${SELECT_REQUEST} FROM mentorship_request WHERE mentor_id = $1 ORDER BY created_at DESC`,
+    const res = await db.query<RequestView>(
+      `SELECT ${SELECT_REQUEST_VIEW} ${FROM_REQUEST_VIEW}
+       WHERE r.mentor_id = $1 ORDER BY r.created_at DESC`,
       [mentorId],
     );
     return res.rows;
@@ -253,10 +274,11 @@ export async function listRequestsForMentor(
 export async function listRequestsForMentee(
   tenantId: string,
   menteeId: string,
-): Promise<RequestRecord[]> {
+): Promise<RequestView[]> {
   return withTenant(tenantId, async (db) => {
-    const res = await db.query<RequestRecord>(
-      `SELECT ${SELECT_REQUEST} FROM mentorship_request WHERE mentee_id = $1 ORDER BY created_at DESC`,
+    const res = await db.query<RequestView>(
+      `SELECT ${SELECT_REQUEST_VIEW} ${FROM_REQUEST_VIEW}
+       WHERE r.mentee_id = $1 ORDER BY r.created_at DESC`,
       [menteeId],
     );
     return res.rows;
@@ -268,6 +290,10 @@ export interface MentorshipRecord {
   mentorId: string;
   menteeId: string;
   status: string;
+  /** Display name of the other party, relative to the requesting user. */
+  counterpartName: string | null;
+  /** The requesting user's role in this mentorship. */
+  role: 'mentor' | 'mentee';
 }
 
 export async function listMentorships(
@@ -276,8 +302,18 @@ export async function listMentorships(
 ): Promise<MentorshipRecord[]> {
   return withTenant(tenantId, async (db) => {
     const res = await db.query<MentorshipRecord>(
-      `SELECT id, mentor_id AS "mentorId", mentee_id AS "menteeId", status
-       FROM mentorship WHERE mentor_id = $1 OR mentee_id = $1 ORDER BY created_at DESC`,
+      `SELECT m.id,
+              m.mentor_id AS "mentorId",
+              m.mentee_id AS "menteeId",
+              m.status,
+              CASE WHEN m.mentor_id = $1 THEN 'mentor' ELSE 'mentee' END AS "role",
+              CASE WHEN m.mentor_id = $1 THEN mentee.display_name
+                   ELSE mentor.display_name END AS "counterpartName"
+       FROM mentorship m
+       LEFT JOIN tenant_user mentor ON mentor.id = m.mentor_id
+       LEFT JOIN tenant_user mentee ON mentee.id = m.mentee_id
+       WHERE m.mentor_id = $1 OR m.mentee_id = $1
+       ORDER BY m.created_at DESC`,
       [userId],
     );
     return res.rows;

@@ -13,6 +13,8 @@ export interface Branding {
   paperColor: string;
   programName: string;
   locale: string;
+  fontFamily: string | null;
+  borderRadius: string | null;
 }
 
 const INK = '#14100D';
@@ -72,12 +74,17 @@ export function bestTextContrast(bg: string): number {
 
 /** Maps branding to the CSS variables consumed by globals.css. */
 export function brandingToCssVars(b: Branding): Record<string, string> {
-  return {
+  const vars: Record<string, string> = {
     '--brand-primary': b.primaryColor,
     '--brand-secondary': b.secondaryColor,
     '--accent-ink': readableTextOn(b.primaryColor),
     '--accent-ink-2': readableTextOn(b.secondaryColor),
   };
+  // Optional tenant theme tokens (from a DESIGN.md upload). Only override when
+  // present so the product's default type/radius stay intact otherwise.
+  if (b.fontFamily) vars['--sans'] = `"${b.fontFamily}", system-ui, sans-serif`;
+  if (b.borderRadius) vars['--brand-radius'] = b.borderRadius;
+  return vars;
 }
 
 /** Inline style object for theming a subtree with the tenant's brand. */

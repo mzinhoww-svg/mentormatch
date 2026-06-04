@@ -87,6 +87,7 @@ model TenantUser {
   contactEmail    String?  @map("contact_email")
   contactPhone    String?  @map("contact_phone")
   contactWhatsapp String?  @map("contact_whatsapp")
+  contactPublic   Boolean  @default(false) @map("contact_public")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -153,6 +154,8 @@ model Profile {
   title           String?
   area            String?
   seniority       String?
+  avatarUrl       String?  @map("avatar_url")
+  linkedinUrl     String?  @map("linkedin_url")
   status          String   @default("inactive")
   mentorAvailable Boolean  @default(false) @map("mentor_available")
   mentorPaused    Boolean  @default(false) @map("mentor_paused")
@@ -388,6 +391,8 @@ model TenantSettings {
   logoUrl               String?  @map("logo_url")
   primaryColor          String?  @map("primary_color")
   secondaryColor        String?  @map("secondary_color")
+  fontFamily            String?  @map("font_family")
+  borderRadius          String?  @map("border_radius")
   programName           String?  @map("program_name")
   locale                String   @default("pt-BR")
   status                String   @default("active")

@@ -41,9 +41,22 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   return data as T;
 }
 
+/** Multipart upload (e.g. avatar/logo). Keeps the same same-origin/cookie guarantees. */
+async function upload<T>(path: string, form: FormData): Promise<T> {
+  assertSameOrigin(path);
+  const res = await fetch(path, { method: 'POST', credentials: 'same-origin', body: form });
+  const data: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const d = (data ?? {}) as { error?: string; message?: string };
+    throw new ApiError(res.status, d.error ?? 'ERROR', d.message ?? 'request_failed');
+  }
+  return data as T;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
   del: <T>(path: string, body?: unknown) => request<T>('DELETE', path, body),
+  upload,
 };

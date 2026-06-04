@@ -26,6 +26,8 @@ export async function POST(request: Request): Promise<Response> {
       logoUrl: str(body.logoUrl),
       primaryColor: str(body.primaryColor),
       secondaryColor: str(body.secondaryColor),
+      fontFamily: str(body.fontFamily),
+      borderRadius: str(body.borderRadius),
       programName: str(body.programName),
       locale: body.locale !== undefined ? String(body.locale) : undefined,
       allowSelfSignup: typeof body.allowSelfSignup === 'boolean' ? body.allowSelfSignup : undefined,

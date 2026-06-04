@@ -25,9 +25,11 @@ describe('MentorsView (proofs 4 & 5: directory cards/filters + request)', () => 
     expect(screen.getByLabelText('Área')).toBeTruthy();
     // Card rendered from the (host-scoped) response.
     expect(await screen.findByText('Bruno Reis')).toBeTruthy();
-    expect(screen.getByText('React')).toBeTruthy();
+    // "React" appears both as a skill chip and as a quick-filter button now;
+    // assert the skill chip specifically.
+    expect(screen.getAllByText('React').some((el) => el.className.includes('tag'))).toBe(true);
 
-    fireEvent.click(screen.getByRole('button', { name: /solicitar mentoria/i }));
+    fireEvent.click(screen.getByTestId('request-m1'));
     await waitFor(() => expect(calledWith(mock, 'POST', '/api/mentorship/requests')).toBe(true));
     const req = mock.calls.find((c) => c.path === '/api/mentorship/requests');
     expect(req?.body).toMatchObject({ mentorId: 'm1' });

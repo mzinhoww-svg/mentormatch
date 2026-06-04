@@ -36,6 +36,7 @@ export interface Plan {
   key: string;
   name: string;
   tagline: string;
+  anchor: string;
   features: string[];
   highlight?: boolean;
 }
@@ -46,6 +47,7 @@ export const PLANS: Plan[] = [
     key: 'starter',
     name: 'Starter',
     tagline: 'Para começar a circular conhecimento.',
+    anchor: 'Para times até ~50 pessoas',
     features: [
       'Programa de mentoria padrão',
       'Diretório de mentores com busca e filtros',
@@ -58,6 +60,7 @@ export const PLANS: Plan[] = [
     key: 'growth',
     name: 'Growth',
     tagline: 'Para escalar a mentoria na empresa.',
+    anchor: 'Para times de 50 a 1.000 pessoas',
     highlight: true,
     features: [
       'Tudo do Starter',
@@ -71,6 +74,7 @@ export const PLANS: Plan[] = [
     key: 'enterprise',
     name: 'Enterprise',
     tagline: 'Para operações multi-área e governança.',
+    anchor: 'Para 1.000+ pessoas e multi-área',
     features: [
       'Tudo do Growth',
       'Isolamento multi-tenant dedicado',
@@ -82,3 +86,25 @@ export const PLANS: Plan[] = [
 ];
 
 export const HEADCOUNT_OPTIONS = ['1–50', '51–200', '201–1000', '1000+'] as const;
+
+/**
+ * Method proof — honest, product-grounded numbers (no invented client logos
+ * or fake testimonials). These describe how the product works, used as social
+ * proof of *method* until real client metrics exist. Swap for client logos /
+ * outcome metrics as soon as a pilot produces them.
+ */
+export interface Proof {
+  k: string;
+  v: string;
+  note: string;
+}
+
+export const METHOD_PROOF: Proof[] = [
+  { k: 'Do match ao impacto', v: '6 etapas', note: 'Perfil, busca, solicitação, sessão e feedback — num fluxo só.' },
+  { k: 'Cada sessão', v: 'Com histórico', note: 'Agendada, confirmada e concluída dentro da mentoria.' },
+  { k: 'Impacto', v: 'Medido', note: 'Avaliação pós-sessão alimenta as métricas do admin.' },
+  { k: 'Sua marca', v: 'White-label', note: 'Logo e cores da empresa aplicados ao produto inteiro.' },
+];
+
+/** Reassurance shown under the demo form to lower submit anxiety. */
+export const DEMO_REASSURANCE = 'Resposta em até 1 dia útil. Sem compromisso e sem cartão.';

@@ -20,6 +20,8 @@ const DEFAULTS: Branding = {
   paperColor: '#FBF7F0',
   programName: 'Programa de Mentoria',
   locale: 'pt-BR',
+  fontFamily: null,
+  borderRadius: null,
 };
 
 /** Maps an auth error to a specific, honest message (not a blanket "invalid"). */

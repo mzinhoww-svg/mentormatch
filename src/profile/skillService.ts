@@ -115,3 +115,22 @@ export async function listUserSkills(
     return res.rows;
   });
 }
+
+/**
+ * Adds a skill by free-text name: finds or creates the catalog skill (idempotent
+ * via normalized_name), then associates it with the user. Powers the type-and-
+ * comma skill input on the profile screen.
+ */
+export async function addUserSkillByName(
+  tenantId: string,
+  userId: string,
+  input: { name: string; relation: SkillRelation; level?: string },
+): Promise<UserSkillRecord> {
+  if (!RELATIONS.includes(input.relation)) {
+    throw expectedError(ErrorCode.VALIDATION, 'invalid_relation');
+  }
+  const name = input.name.trim();
+  if (!name) throw expectedError(ErrorCode.VALIDATION, 'skill_name_required');
+  const skill = await createSkill(tenantId, { name });
+  return addUserSkill(tenantId, userId, { skillId: skill.id, relation: input.relation, level: input.level });
+}
