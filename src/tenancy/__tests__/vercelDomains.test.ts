@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { isEdgeConfigured, addDomainToEdge, verifyDomainOnEdge } from '../vercelDomains.js';
+import type { FetchLike } from '../../http/fetchLike.js';
 
 const KEYS = ['VERCEL_API_TOKEN', 'VERCEL_PROJECT_ID', 'VERCEL_TEAM_ID'] as const;
 const saved: Record<string, string | undefined> = {};
@@ -18,7 +19,6 @@ afterEach(() => {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
-  vi.unstubAllGlobals();
 });
 
 describe('isEdgeConfigured', () => {
@@ -32,74 +32,76 @@ describe('isEdgeConfigured', () => {
   });
 });
 
-describe('addDomainToEdge', () => {
+describe('addDomainToEdge (injected fetch seam)', () => {
   it('skips with no network when unconfigured', async () => {
     for (const k of KEYS) delete process.env[k];
-    const f = vi.fn();
-    vi.stubGlobal('fetch', f);
-    expect(await addDomainToEdge('mentoria.acme.com')).toEqual({ ok: false, skipped: true });
-    expect(f).not.toHaveBeenCalled();
+    const fetchImpl = vi.fn<FetchLike>();
+    expect(await addDomainToEdge('mentoria.acme.com', fetchImpl)).toEqual({ ok: false, skipped: true });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('POSTs to the project domains endpoint and returns the challenge', async () => {
     configure();
-    const f = vi.fn(
-      async (_u: string | URL | Request, _i?: RequestInit): Promise<Response> =>
+    const fetchImpl = vi.fn<FetchLike>(
+      async () =>
         new Response(
           JSON.stringify({ verified: false, verification: [{ type: 'TXT', domain: '_vercel.x', value: 'v' }] }),
           { status: 200 },
         ),
     );
-    vi.stubGlobal('fetch', f);
 
-    const r = await addDomainToEdge('mentoria.acme.com');
+    const r = await addDomainToEdge('mentoria.acme.com', fetchImpl);
     expect(r.ok).toBe(true);
     expect(r.verified).toBe(false);
     expect(r.verification?.[0]?.type).toBe('TXT');
 
-    const [url, init] = f.mock.calls[0]!;
-    expect(String(url)).toContain('/v10/projects/prj_1/domains');
-    expect(String(url)).toContain('teamId=team_1');
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toContain('/v10/projects/prj_1/domains');
+    expect(url).toContain('teamId=team_1');
     expect((init!.headers as Record<string, string>).authorization).toBe('Bearer tok');
     expect(JSON.parse(init!.body as string)).toEqual({ name: 'mentoria.acme.com' });
   });
 
   it('treats 400 (already on project) as ok and 409 as an error', async () => {
     configure();
-    vi.stubGlobal('fetch', vi.fn(async (): Promise<Response> => new Response('', { status: 400 })));
-    expect((await addDomainToEdge('x.acme.com')).ok).toBe(true);
+    const ok400 = await addDomainToEdge(
+      'x.acme.com',
+      vi.fn<FetchLike>(async () => new Response('', { status: 400 })),
+    );
+    expect(ok400.ok).toBe(true);
 
-    vi.stubGlobal('fetch', vi.fn(async (): Promise<Response> => new Response('exists', { status: 409 })));
-    const r = await addDomainToEdge('x.acme.com');
-    expect(r.ok).toBe(false);
-    expect(r.error).toContain('vercel_http_409');
+    const r409 = await addDomainToEdge(
+      'x.acme.com',
+      vi.fn<FetchLike>(async () => new Response('exists', { status: 409 })),
+    );
+    expect(r409.ok).toBe(false);
+    expect(r409.error).toContain('vercel_http_409');
   });
 
   it('never throws when fetch throws', async () => {
     configure();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (): Promise<Response> => {
+    const r = await addDomainToEdge(
+      'x.acme.com',
+      vi.fn<FetchLike>(async () => {
         throw new Error('net down');
       }),
     );
-    const r = await addDomainToEdge('x.acme.com');
     expect(r.ok).toBe(false);
     expect(r.error).toContain('net down');
   });
 });
 
-describe('verifyDomainOnEdge', () => {
+describe('verifyDomainOnEdge (injected fetch seam)', () => {
   it('skips when unconfigured', async () => {
     for (const k of KEYS) delete process.env[k];
-    expect(await verifyDomainOnEdge('x.acme.com')).toEqual({ ok: false, skipped: true });
+    expect(await verifyDomainOnEdge('x.acme.com', vi.fn<FetchLike>())).toEqual({ ok: false, skipped: true });
   });
   it('returns verified on success', async () => {
     configure();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (): Promise<Response> => new Response(JSON.stringify({ verified: true }), { status: 200 })),
+    const r = await verifyDomainOnEdge(
+      'x.acme.com',
+      vi.fn<FetchLike>(async () => new Response(JSON.stringify({ verified: true }), { status: 200 })),
     );
-    expect(await verifyDomainOnEdge('x.acme.com')).toEqual({ ok: true, verified: true });
+    expect(r).toEqual({ ok: true, verified: true });
   });
 });

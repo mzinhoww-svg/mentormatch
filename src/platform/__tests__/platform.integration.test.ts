@@ -3,6 +3,7 @@ import {
   createPlatformAdmin,
   loginPlatformAdmin,
   getActivePlatformAdmin,
+  changePlatformPassword,
 } from '../platformAuthService.js';
 import {
   createTenant,
@@ -60,5 +61,15 @@ describe.skipIf(!hasDb)('Platform admin + tenant ops (integration)', () => {
 
     await setTenantRegistryStatus(t.id, 'active');
     expect((await resolveActiveTenant(`${slug}.localhost`)).kind).toBe('TENANT');
+  });
+
+  it('changes the password — old fails, new works, wrong current rejected', async () => {
+    const email = `ops-${rand()}@x.com`;
+    const admin = await createPlatformAdmin({ token: 'boot-secret', email, password: 'pw12345678' });
+
+    await changePlatformPassword(admin.id, 'pw12345678', 'newpass9999');
+    await expect(loginPlatformAdmin({ email, password: 'pw12345678' })).rejects.toThrow();
+    expect((await loginPlatformAdmin({ email, password: 'newpass9999' })).id).toBe(admin.id);
+    await expect(changePlatformPassword(admin.id, 'wrong-current', 'another9999')).rejects.toThrow();
   });
 });

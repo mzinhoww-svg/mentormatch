@@ -6,6 +6,7 @@
  * — every call returns a result and logs metadata only.
  */
 import { logger } from '../observability/logger.js';
+import type { FetchLike } from '../http/fetchLike.js';
 
 const API = 'https://api.vercel.com';
 
@@ -44,9 +45,14 @@ export interface EdgeResult {
   error?: string;
 }
 
-async function call(path: string, init: RequestInit, cfg: EdgeConfig): Promise<Response> {
+async function call(
+  path: string,
+  init: RequestInit,
+  cfg: EdgeConfig,
+  fetchImpl: FetchLike,
+): Promise<Response> {
   const sep = path.includes('?') ? '&' : '?';
-  return fetch(`${API}${path}${sep}teamId=${encodeURIComponent(cfg.teamId)}`, {
+  return fetchImpl(`${API}${path}${sep}teamId=${encodeURIComponent(cfg.teamId)}`, {
     ...init,
     headers: {
       authorization: `Bearer ${cfg.token}`,
@@ -61,7 +67,10 @@ async function call(path: string, init: RequestInit, cfg: EdgeConfig): Promise<R
  * project") is treated as success; a 409 ("assigned to another project/account")
  * surfaces as an error. Returns Vercel's verification challenge when present.
  */
-export async function addDomainToEdge(domain: string): Promise<EdgeResult> {
+export async function addDomainToEdge(
+  domain: string,
+  fetchImpl: FetchLike = fetch,
+): Promise<EdgeResult> {
   const cfg = edgeConfig();
   if (!cfg) return { ok: false, skipped: true };
   try {
@@ -69,6 +78,7 @@ export async function addDomainToEdge(domain: string): Promise<EdgeResult> {
       `/v10/projects/${encodeURIComponent(cfg.projectId)}/domains`,
       { method: 'POST', body: JSON.stringify({ name: domain }) },
       cfg,
+      fetchImpl,
     );
     if (res.ok) {
       const data = (await res.json().catch(() => ({}))) as {
@@ -88,7 +98,10 @@ export async function addDomainToEdge(domain: string): Promise<EdgeResult> {
 }
 
 /** Asks Vercel to (re)check the domain's verification challenge. */
-export async function verifyDomainOnEdge(domain: string): Promise<EdgeResult> {
+export async function verifyDomainOnEdge(
+  domain: string,
+  fetchImpl: FetchLike = fetch,
+): Promise<EdgeResult> {
   const cfg = edgeConfig();
   if (!cfg) return { ok: false, skipped: true };
   try {
@@ -96,6 +109,7 @@ export async function verifyDomainOnEdge(domain: string): Promise<EdgeResult> {
       `/v9/projects/${encodeURIComponent(cfg.projectId)}/domains/${encodeURIComponent(domain)}/verify`,
       { method: 'POST' },
       cfg,
+      fetchImpl,
     );
     if (res.ok) {
       const data = (await res.json().catch(() => ({}))) as { verified?: boolean };
