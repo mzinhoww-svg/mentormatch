@@ -47,6 +47,8 @@ describe('brandingToCssVars', () => {
       paperColor: '#FBF7F0',
       programName: 'X',
       locale: 'pt-BR',
+      fontFamily: null,
+      borderRadius: null,
     };
     expect(brandingToCssVars(b)).toEqual({
       '--brand-primary': '#FFD400',

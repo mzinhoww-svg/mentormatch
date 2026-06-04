@@ -20,6 +20,8 @@ const DEFAULTS: Branding = {
   paperColor: '#FBF7F0',
   programName: 'Programa de Mentoria',
   locale: 'pt-BR',
+  fontFamily: null,
+  borderRadius: null,
 };
 
 const MIN_PASSWORD = 8;

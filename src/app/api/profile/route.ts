@@ -23,6 +23,8 @@ export async function PUT(request: Request): Promise<Response> {
       title: body.title !== undefined ? String(body.title) : undefined,
       area: body.area !== undefined ? String(body.area) : undefined,
       seniority: body.seniority !== undefined ? String(body.seniority) : undefined,
+      avatarUrl: body.avatarUrl !== undefined ? (body.avatarUrl === null ? null : String(body.avatarUrl)) : undefined,
+      linkedinUrl: body.linkedinUrl !== undefined ? (body.linkedinUrl === null ? null : String(body.linkedinUrl)) : undefined,
     });
     return json({ ok: true, profile });
   } catch (err) {

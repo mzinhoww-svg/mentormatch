@@ -47,6 +47,8 @@ describe('brandingToCssVars (tenant branding applied)', () => {
       paperColor: '#FBF7F0',
       programName: 'X',
       locale: 'pt-BR',
+      fontFamily: null,
+      borderRadius: null,
     };
     expect(brandingToCssVars(b)).toEqual({
       '--brand-primary': '#0A0A0A',
@@ -55,6 +57,24 @@ describe('brandingToCssVars (tenant branding applied)', () => {
       '--accent-ink': '#FFFFFF',
       '--accent-ink-2': '#FFFFFF',
     });
+  });
+
+  it('adds font and radius vars only when present', () => {
+    const b: Branding = {
+      displayName: null,
+      logoUrl: null,
+      primaryColor: '#0A0A0A',
+      secondaryColor: '#0B0B0B',
+      inkColor: '#14100D',
+      paperColor: '#FBF7F0',
+      programName: 'X',
+      locale: 'pt-BR',
+      fontFamily: 'Poppins',
+      borderRadius: '34px',
+    };
+    const vars = brandingToCssVars(b);
+    expect(vars['--sans']).toContain('Poppins');
+    expect(vars['--brand-radius']).toBe('34px');
   });
 });
 

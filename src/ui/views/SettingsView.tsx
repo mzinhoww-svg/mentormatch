@@ -1,10 +1,10 @@
 'use client';
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../api.js';
 import { Loading, Banner, useResource, errorMessage } from '../components.js';
 import { isAdminRole } from '../nav.js';
-import { bestTextContrast, MIN_TEXT_CONTRAST } from '../branding.js';
 import { CustomDomains } from './CustomDomains.js';
+import { notificationLabel } from '../../notifications/labels.js';
 import { NOTIFICATION_TYPES } from '../../notifications/types.js';
 
 interface Pref {
@@ -32,19 +32,24 @@ export function SettingsView() {
 
       <section className="card" style={{ marginTop: 'var(--sp-5)' }}>
         <div className="card-h">Preferências de notificação</div>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 'var(--sp-4)' }}>
+          Escolha como deseja ser avisado de cada evento.
+        </p>
         {NOTIFICATION_TYPES.map((t) => {
           const p = prefMap.get(t);
           const inApp = p ? p.inApp : true;
           const email = p ? p.email : false;
           return (
-            <div className="row-item" key={t}>
-              <span style={{ flex: 1, fontSize: 14 }} className="mono">{t}</span>
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
-                <input type="checkbox" checked={inApp} onChange={(e) => toggle(t, { inApp: e.target.checked })} /> in-app
-              </label>
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}>
-                <input type="checkbox" checked={email} onChange={(e) => toggle(t, { email: e.target.checked })} /> e-mail
-              </label>
+            <div className="pref-row" key={t}>
+              <span className="pref-name">{notificationLabel(t)}</span>
+              <div className="pref-checks">
+                <label>
+                  <input type="checkbox" checked={inApp} onChange={(e) => toggle(t, { inApp: e.target.checked })} /> in-app
+                </label>
+                <label>
+                  <input type="checkbox" checked={email} onChange={(e) => toggle(t, { email: e.target.checked })} /> e-mail
+                </label>
+              </div>
             </div>
           );
         })}
@@ -68,18 +73,52 @@ interface Settings {
     secondaryColor: string;
     programName: string;
     locale: string;
+    fontFamily: string | null;
+    borderRadius: string | null;
   };
   status: string;
 }
 
-const MAX_LOGO_KB = 512;
-const LOGO_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
-const LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+interface ParsedDesign {
+  title: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  fontFamily: string | null;
+  borderRadius: string | null;
+  palette: string[];
+  warnings: string[];
+}
 
-/** True when even the best text color can't reach AA on this background. */
-function lowContrast(value: string): boolean {
-  const c = bestTextContrast(value);
-  return Number.isFinite(c) && c < MIN_TEXT_CONTRAST;
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** Color input (swatch + hex text). Hoisted so it never remounts mid-typing. */
+function ColorField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const safe = HEX.test(value) ? value : '#000000';
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <div className="color-field">
+        <input
+          type="color"
+          className="color-swatch"
+          value={safe}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={`${label} (seletor)`}
+        />
+        <input id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)} placeholder="#RRGGBB" />
+      </div>
+    </div>
+  );
 }
 
 function BrandingSettings() {
@@ -88,21 +127,28 @@ function BrandingSettings() {
   );
   const [form, setForm] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
-  const [logo, setLogo] = useState<string | null | undefined>(undefined);
-  const [logoBusy, setLogoBusy] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [design, setDesign] = useState<ParsedDesign | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const logoRef = useRef<HTMLInputElement>(null);
+  const designRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <Loading />;
   if (error || !data) return <Banner kind="error">{error ?? 'erro'}</Banner>;
 
   const b = data.settings.branding;
   const val = (k: string, fallback: string) => form[k] ?? fallback;
-  const currentLogo = logo !== undefined ? logo : b.logoUrl;
-  const pc = val('primaryColor', b.primaryColor);
-  const sc = val('secondaryColor', b.secondaryColor);
+  const primary = val('primaryColor', b.primaryColor);
+  const secondary = val('secondaryColor', b.secondaryColor);
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function save(e: FormEvent) {
     e.preventDefault();
     setMsg(null);
+    if (!HEX.test(primary) || !HEX.test(secondary)) {
+      setMsg({ kind: 'error', text: 'Use cores no formato #RRGGBB.' });
+      return;
+    }
     try {
       await api.post('/api/admin/settings', form);
       setMsg({ kind: 'ok', text: 'Branding salvo.' });
@@ -113,58 +159,56 @@ function BrandingSettings() {
     }
   }
 
-  async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
+  async function onLogoFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ''; // let the admin re-pick the same file
     if (!file) return;
+    setUploadingLogo(true);
     setMsg(null);
-    if (!LOGO_TYPES.has(file.type)) {
-      setMsg({ kind: 'error', text: 'Formato não suportado (PNG, JPG, WEBP ou SVG).' });
-      return;
-    }
-    if (file.size > MAX_LOGO_KB * 1024) {
-      setMsg({ kind: 'error', text: `Logo acima de ${MAX_LOGO_KB} KB.` });
-      return;
-    }
-    setLogoBusy(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/admin/settings/logo', {
-        method: 'POST',
-        body: fd,
-        credentials: 'same-origin',
-      });
-      const body = (await res.json().catch(() => ({}))) as { url?: string; message?: string };
-      if (!res.ok) throw new Error(body.message ?? 'upload_failed');
-      setLogo(body.url ?? null);
+      await api.upload('/api/admin/settings/logo', fd);
       setMsg({ kind: 'ok', text: 'Logo atualizado.' });
+      reload();
     } catch (err) {
       setMsg({ kind: 'error', text: errorMessage(err) });
     } finally {
-      setLogoBusy(false);
+      setUploadingLogo(false);
+      if (logoRef.current) logoRef.current.value = '';
     }
   }
 
-  async function removeLogo() {
+  async function onDesignFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setParsing(true);
     setMsg(null);
-    setLogoBusy(true);
+    setDesign(null);
     try {
-      const res = await fetch('/api/admin/settings/logo', {
-        method: 'DELETE',
-        credentials: 'same-origin',
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { message?: string };
-        throw new Error(body.message ?? 'remove_failed');
-      }
-      setLogo(null);
-      setMsg({ kind: 'ok', text: 'Logo removido.' });
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await api.upload<{ parsed: ParsedDesign }>('/api/admin/settings/design', fd);
+      setDesign(r.parsed);
     } catch (err) {
       setMsg({ kind: 'error', text: errorMessage(err) });
     } finally {
-      setLogoBusy(false);
+      setParsing(false);
+      if (designRef.current) designRef.current.value = '';
     }
+  }
+
+  /** Stages the parsed DESIGN.md tokens into the form (admin still clicks Save). */
+  function applyDesign() {
+    if (!design) return;
+    setForm((f) => ({
+      ...f,
+      ...(design.primaryColor ? { primaryColor: design.primaryColor } : {}),
+      ...(design.secondaryColor ? { secondaryColor: design.secondaryColor } : {}),
+      ...(design.fontFamily ? { fontFamily: design.fontFamily } : {}),
+      ...(design.borderRadius ? { borderRadius: design.borderRadius } : {}),
+    }));
+    setDesign(null);
+    setMsg({ kind: 'ok', text: 'Tokens aplicados ao formulário. Revise e salve.' });
   }
 
   return (
@@ -172,72 +216,110 @@ function BrandingSettings() {
       <div className="card-h">Branding do tenant (admin)</div>
       {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
 
+      {/* Logo */}
       <div className="field">
-        <label>Logotipo</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', flexWrap: 'wrap' }}>
-          {currentLogo ? (
-            <img
-              src={currentLogo}
-              alt="Logo atual"
-              style={{ height: 40, width: 'auto', borderRadius: 'var(--r-sm)', background: '#fff' }}
-            />
-          ) : (
-            <span className="muted" style={{ fontSize: 14 }}>
-              Sem logo (usa a marca MentorMatch)
-            </span>
-          )}
-          <input
-            type="file"
-            accept={LOGO_ACCEPT}
-            onChange={onPickLogo}
-            disabled={logoBusy}
-            aria-label="Enviar logotipo"
-          />
-          {currentLogo ? (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={removeLogo}
-              disabled={logoBusy}
-            >
-              Remover
+        <label>Logo do programa</label>
+        <div className="logo-row">
+          <span className="logo-box">
+            {b.logoUrl ? <img src={b.logoUrl} alt="Logo do tenant" /> : <span className="empty">SEM LOGO</span>}
+          </span>
+          <div>
+            <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={onLogoFile} style={{ display: 'none' }} />
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => logoRef.current?.click()} disabled={uploadingLogo}>
+              {uploadingLogo ? 'Enviando…' : b.logoUrl ? 'Trocar logo' : 'Enviar logo'}
             </button>
-          ) : null}
+            <p className="pf-hint">PNG, JPG, WebP ou SVG · até 1 MB</p>
+          </div>
         </div>
-        <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-          PNG, JPG, WEBP ou SVG · até {MAX_LOGO_KB} KB.
-        </p>
+      </div>
+
+      {/* DESIGN.md import */}
+      <div className="field">
+        <label>Importar de um DESIGN.md</label>
+        <input ref={designRef} type="file" accept=".md,text/markdown,text/plain" onChange={onDesignFile} style={{ display: 'none' }} />
+        <div
+          className="design-drop"
+          role="button"
+          tabIndex={0}
+          onClick={() => designRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              designRef.current?.click();
+            }
+          }}
+        >
+          <div className="big">{parsing ? 'Lendo arquivo…' : 'Enviar DESIGN.md'}</div>
+          <p className="pf-hint" style={{ marginTop: 4 }}>
+            Extraímos cores, fonte e raio para você revisar antes de aplicar.
+          </p>
+        </div>
+
+        {design ? (
+          <div className="design-result">
+            {design.title ? <div style={{ fontWeight: 700, marginBottom: 8 }}>{design.title}</div> : null}
+            <div className="design-kv"><span className="k">Cor primária</span><span>{design.primaryColor ?? '—'}</span></div>
+            <div className="design-kv"><span className="k">Cor secundária</span><span>{design.secondaryColor ?? '—'}</span></div>
+            <div className="design-kv"><span className="k">Fonte</span><span>{design.fontFamily ?? '—'}</span></div>
+            <div className="design-kv"><span className="k">Border radius</span><span>{design.borderRadius ?? '—'}</span></div>
+            {design.palette.length > 0 ? (
+              <div className="palette">
+                {design.palette.slice(0, 10).map((c) => (
+                  <span key={c} className="sw" style={{ background: c }} title={c} />
+                ))}
+              </div>
+            ) : null}
+            {design.warnings.length > 0 ? <div className="design-warn">{design.warnings.join(' ')}</div> : null}
+            <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-4)' }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={applyDesign}>Aplicar ao formulário</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDesign(null)}>Descartar</button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="field">
         <label htmlFor="dn">Nome de exibição</label>
-        <input id="dn" className="input" value={val('displayName', b.displayName ?? '')} onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))} />
+        <input id="dn" className="input" value={val('displayName', b.displayName ?? '')} onChange={(e) => set('displayName', e.target.value)} />
       </div>
       <div className="field">
         <label htmlFor="pn">Nome do programa</label>
-        <input id="pn" className="input" value={val('programName', b.programName)} onChange={(e) => setForm((f) => ({ ...f, programName: e.target.value }))} />
+        <input id="pn" className="input" value={val('programName', b.programName)} onChange={(e) => set('programName', e.target.value)} />
+      </div>
+      <div className="grid grid-2">
+        <ColorField id="pc" label="Cor primária" value={primary} onChange={(v) => set('primaryColor', v)} />
+        <ColorField id="sc" label="Cor secundária" value={secondary} onChange={(v) => set('secondaryColor', v)} />
       </div>
       <div className="grid grid-2">
         <div className="field">
-          <label htmlFor="pc">Cor primária</label>
-          <input id="pc" className="input" value={pc} onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))} />
-          {lowContrast(pc) ? (
-            <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              Contraste baixo — o texto sobre esta cor pode ficar difícil de ler.
-            </p>
-          ) : null}
+          <label htmlFor="ff">Fonte</label>
+          <input id="ff" className="input" placeholder="Ex.: Poppins" value={val('fontFamily', b.fontFamily ?? '')} onChange={(e) => set('fontFamily', e.target.value)} />
         </div>
         <div className="field">
-          <label htmlFor="sc">Cor secundária</label>
-          <input id="sc" className="input" value={sc} onChange={(e) => setForm((f) => ({ ...f, secondaryColor: e.target.value }))} />
-          {lowContrast(sc) ? (
-            <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              Contraste baixo — o texto sobre esta cor pode ficar difícil de ler.
-            </p>
-          ) : null}
+          <label htmlFor="br">Border radius</label>
+          <input id="br" className="input" placeholder="Ex.: 4px, 34px" value={val('borderRadius', b.borderRadius ?? '')} onChange={(e) => set('borderRadius', e.target.value)} />
         </div>
       </div>
-      <button className="btn btn-primary" type="submit">Salvar branding</button>
+
+      {/* Live preview */}
+      <div className="brand-preview" aria-hidden>
+        <span className="chip-prim" style={{ background: HEX.test(primary) ? primary : undefined }} />
+        <span className="chip-sec" style={{ background: HEX.test(secondary) ? secondary : undefined }} />
+        <span
+          className="btn btn-primary btn-sm"
+          style={{
+            background: HEX.test(primary) ? primary : undefined,
+            borderRadius: val('borderRadius', b.borderRadius ?? '') || undefined,
+            fontFamily: val('fontFamily', b.fontFamily ?? '') || undefined,
+          }}
+        >
+          {val('programName', b.programName) || 'Botão de exemplo'}
+        </span>
+      </div>
+
+      <button className="btn btn-primary" type="submit" style={{ marginTop: 'var(--sp-4)' }}>
+        Salvar branding
+      </button>
     </form>
   );
 }

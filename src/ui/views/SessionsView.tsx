@@ -1,7 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { Loading, EmptyState, Banner, useResource, errorMessage } from '../components.js';
+import { Loading, EmptyState, Banner, ConfirmDialog, StarRating, StatusTag, useResource, errorMessage } from '../components.js';
 
 interface Session {
   id: string;
@@ -13,14 +13,15 @@ interface Session {
 interface Mentorship {
   id: string;
   status: string;
+  counterpartName: string | null;
+  role: 'mentor' | 'mentee';
 }
 
-const STATUS_TAG: Record<string, string> = {
-  requested: 'tag-ember',
-  confirmed: 'tag-green',
-  completed: 'tag-gray',
-  cancelled: 'tag-gray',
-};
+function mentorshipLabel(m: Mentorship | undefined): string {
+  if (!m) return 'Mentoria';
+  const name = m.counterpartName ?? 'sem nome';
+  return m.role === 'mentor' ? `Mentorando ${name}` : `Com ${name}`;
+}
 
 export function SessionsView() {
   const sessions = useResource<{ sessions: Session[] }>(() => api.get('/api/mentorship/sessions'));
@@ -31,10 +32,18 @@ export function SessionsView() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [objective, setObjective] = useState('');
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+
+  const byId = new Map((mentorships.data?.mentorships ?? []).map((m) => [m.id, m]));
+  const nowLocal = new Date().toISOString().slice(0, 16);
 
   async function create(e: FormEvent) {
     e.preventDefault();
     setMsg(null);
+    if (new Date(scheduledAt).getTime() < Date.now()) {
+      setMsg({ kind: 'error', text: 'Escolha uma data futura.' });
+      return;
+    }
     try {
       await api.post('/api/mentorship/sessions', {
         mentorshipId,
@@ -43,6 +52,7 @@ export function SessionsView() {
       });
       setMsg({ kind: 'ok', text: 'Sessão criada.' });
       setObjective('');
+      setScheduledAt('');
       sessions.reload();
     } catch (err) {
       setMsg({ kind: 'error', text: errorMessage(err) });
@@ -54,7 +64,41 @@ export function SessionsView() {
     sessions.reload();
   }
 
-  const active = mentorships.data?.mentorships.filter((m) => m.status === 'active') ?? [];
+  function doCancel() {
+    if (confirmCancel) act('/api/mentorship/sessions/cancel', confirmCancel);
+    setConfirmCancel(null);
+  }
+
+  const active = (mentorships.data?.mentorships ?? []).filter((m) => m.status === 'active');
+  const all = sessions.data?.sessions ?? [];
+  const upcoming = all.filter((s) => s.status === 'requested' || s.status === 'confirmed');
+  const past = all.filter((s) => s.status === 'completed' || s.status === 'cancelled');
+
+  function renderRow(s: Session) {
+    return (
+      <div className="row-item" key={s.id} style={{ flexWrap: 'wrap' }}>
+        <StatusTag status={s.status} />
+        <span style={{ flex: 1, fontSize: 14, minWidth: 0 }}>
+          <b style={{ fontWeight: 600 }}>{mentorshipLabel(byId.get(s.mentorshipId))}</b>
+          {' · '}
+          {s.scheduledAt ? new Date(s.scheduledAt).toLocaleString('pt-BR') : 'sem data'}
+          {s.objective ? ` · ${s.objective}` : ''}
+        </span>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {s.status === 'requested' ? (
+            <button className="btn btn-primary btn-sm" onClick={() => act('/api/mentorship/sessions/confirm', s.id)}>Confirmar</button>
+          ) : null}
+          {s.status === 'confirmed' ? (
+            <button className="btn btn-primary btn-sm" onClick={() => act('/api/mentorship/sessions/complete', s.id)}>Concluir</button>
+          ) : null}
+          {s.status === 'requested' || s.status === 'confirmed' ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => setConfirmCancel(s.id)}>Cancelar</button>
+          ) : null}
+          {s.status === 'completed' ? <RateSession sessionId={s.id} /> : null}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -68,17 +112,17 @@ export function SessionsView() {
           <select id="ms" className="select" value={mentorshipId} onChange={(e) => setMentorshipId(e.target.value)} required>
             <option value="">Selecione…</option>
             {active.map((m) => (
-              <option key={m.id} value={m.id}>{m.id.slice(0, 8)}</option>
+              <option key={m.id} value={m.id}>{mentorshipLabel(m)}</option>
             ))}
           </select>
         </div>
         <div className="field">
           <label htmlFor="when">Data/hora</label>
-          <input id="when" className="input" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
+          <input id="when" className="input" type="datetime-local" min={nowLocal} value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required />
         </div>
         <div className="field">
           <label htmlFor="obj">Objetivo</label>
-          <input id="obj" className="input" value={objective} onChange={(e) => setObjective(e.target.value)} />
+          <input id="obj" className="input" placeholder="Ex.: revisar metas do trimestre" value={objective} onChange={(e) => setObjective(e.target.value)} />
         </div>
         <button className="btn btn-primary" type="submit" disabled={!mentorshipId || !scheduledAt}>
           Criar sessão
@@ -91,38 +135,35 @@ export function SessionsView() {
           <Loading />
         ) : sessions.error || !sessions.data ? (
           <Banner kind="error">{sessions.error ?? 'erro'}</Banner>
-        ) : sessions.data.sessions.length === 0 ? (
-          <EmptyState title="Nenhuma sessão ainda" />
+        ) : all.length === 0 ? (
+          <EmptyState title="Nenhuma sessão ainda" hint="Agende a primeira sessão acima." />
         ) : (
-          sessions.data.sessions.map((s) => (
-            <div className="row-item" key={s.id} style={{ flexWrap: 'wrap' }}>
-              <span className={`tag ${STATUS_TAG[s.status]}`}>{s.status}</span>
-              <span style={{ flex: 1, fontSize: 14 }}>
-                {s.scheduledAt ? new Date(s.scheduledAt).toLocaleString('pt-BR') : 'sem data'}
-                {s.objective ? ` · ${s.objective}` : ''}
-              </span>
-              <span style={{ display: 'flex', gap: 8 }}>
-                {s.status === 'requested' ? (
-                  <button className="btn btn-primary btn-sm" onClick={() => act('/api/mentorship/sessions/confirm', s.id)}>
-                    Confirmar
-                  </button>
-                ) : null}
-                {s.status === 'confirmed' ? (
-                  <button className="btn btn-primary btn-sm" onClick={() => act('/api/mentorship/sessions/complete', s.id)}>
-                    Concluir
-                  </button>
-                ) : null}
-                {s.status === 'requested' || s.status === 'confirmed' ? (
-                  <button className="btn btn-ghost btn-sm" onClick={() => act('/api/mentorship/sessions/cancel', s.id)}>
-                    Cancelar
-                  </button>
-                ) : null}
-                {s.status === 'completed' ? <RateSession sessionId={s.id} /> : null}
-              </span>
-            </div>
-          ))
+          <>
+            {upcoming.length > 0 ? (
+              <>
+                <div className="session-group">Próximas</div>
+                {upcoming.map(renderRow)}
+              </>
+            ) : null}
+            {past.length > 0 ? (
+              <>
+                <div className="session-group">Histórico</div>
+                {past.map(renderRow)}
+              </>
+            ) : null}
+          </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmCancel !== null}
+        title="Cancelar sessão?"
+        message="A sessão será marcada como cancelada. Esta ação não pode ser desfeita."
+        confirmLabel="Cancelar sessão"
+        cancelLabel="Voltar"
+        onConfirm={doCancel}
+        onCancel={() => setConfirmCancel(null)}
+      />
     </div>
   );
 }
@@ -138,21 +179,5 @@ function RateSession({ sessionId }: { sessionId: string }) {
       setDone(null);
     }
   }
-  if (done !== null) {
-    return (
-      <span className="tag tag-green" data-testid="rated">
-        Avaliado: {done}/5
-      </span>
-    );
-  }
-  return (
-    <span style={{ display: 'flex', gap: 4, alignItems: 'center' }} aria-label="Avaliar sessão">
-      <span className="muted" style={{ fontSize: 12 }}>Avaliar:</span>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} className="btn btn-ghost btn-sm" onClick={() => rate(n)} aria-label={`Nota ${n}`}>
-          {n}
-        </button>
-      ))}
-    </span>
-  );
+  return <StarRating value={done} onRate={rate} label="Avaliar sessão" />;
 }

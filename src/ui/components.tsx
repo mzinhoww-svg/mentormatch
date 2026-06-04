@@ -16,6 +16,85 @@ export function Loading({ label = 'Carregando…' }: { label?: string }) {
   );
 }
 
+/** Shimmer placeholders shown while a card grid loads (less jarring than a spinner). */
+export function SkeletonGrid({ count = 3, cols = 3 }: { count?: number; cols?: 2 | 3 | 4 }) {
+  return (
+    <div className={`grid grid-${cols}`} aria-hidden role="presentation">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="skeleton skel-card" />
+      ))}
+    </div>
+  );
+}
+
+/** Accessible confirmation modal for destructive actions. Closes on Esc / backdrop. */
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel = 'Confirmar',
+  cancelLabel = 'Voltar',
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+  return (
+    <div className="mm-overlay" onClick={onCancel}>
+      <div className="mm-dialog" role="alertdialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <h3>{title}</h3>
+        {message ? <p>{message}</p> : null}
+        <div className="mm-dialog-actions">
+          <button className="btn btn-ghost btn-sm" onClick={onCancel}>{cancelLabel}</button>
+          <button className="btn btn-danger btn-sm" onClick={onConfirm} autoFocus>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 1–5 star rating. Renders a static result once `value` is set. */
+export function StarRating({
+  value,
+  onRate,
+  label = 'Avaliar',
+}: {
+  value: number | null;
+  onRate: (n: number) => void;
+  label?: string;
+}) {
+  if (value !== null) {
+    return (
+      <span className="tag tag-green" data-testid="rated">Avaliado: {value}/5</span>
+    );
+  }
+  return (
+    <span className="mm-stars" role="group" aria-label={label}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" className="mm-star" aria-label={`Nota ${n}`} onClick={() => onRate(n)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.1 6.47L12 17.9 6.2 20.9l1.1-6.47L2.6 9.85l6.5-.95L12 2.5z" />
+          </svg>
+        </button>
+      ))}
+    </span>
+  );
+}
+
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="empty">
@@ -28,6 +107,34 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
 
 export function Banner({ kind, children }: { kind: 'error' | 'ok'; children: ReactNode }) {
   return <div className={`banner banner-${kind}`}>{children}</div>;
+}
+
+/**
+ * Canonical status → { label PT, tag class } map used across the product, so
+ * every screen labels statuses consistently (no more raw English statuses).
+ */
+const STATUS_MAP: Record<string, { label: string; cls: string }> = {
+  // requests
+  pending: { label: 'Pendente', cls: 'tag-ember' },
+  waitlisted: { label: 'Em fila', cls: 'tag-gray' },
+  accepted: { label: 'Aceita', cls: 'tag-green' },
+  rejected: { label: 'Recusada', cls: 'tag-gray' },
+  cancelled: { label: 'Cancelada', cls: 'tag-gray' },
+  expired: { label: 'Expirada', cls: 'tag-gray' },
+  // sessions
+  requested: { label: 'Solicitada', cls: 'tag-ember' },
+  confirmed: { label: 'Confirmada', cls: 'tag-green' },
+  completed: { label: 'Concluída', cls: 'tag-gray' },
+  // mentorships
+  active: { label: 'Ativa', cls: 'tag-green' },
+  ended: { label: 'Encerrada', cls: 'tag-gray' },
+  // user account status
+  suspended: { label: 'Suspenso', cls: 'tag-gray' },
+};
+
+export function StatusTag({ status }: { status: string }) {
+  const m = STATUS_MAP[status] ?? { label: status, cls: 'tag-gray' };
+  return <span className={`tag ${m.cls}`}>{m.label}</span>;
 }
 
 export function errorMessage(err: unknown): string {

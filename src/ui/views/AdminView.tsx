@@ -1,6 +1,7 @@
 'use client';
+import { useState } from 'react';
 import { api } from '../api.js';
-import { Loading, EmptyState, Banner, useResource } from '../components.js';
+import { SkeletonGrid, EmptyState, Banner, StatusTag, ConfirmDialog, useResource } from '../components.js';
 
 interface Overview {
   users: { active: number };
@@ -32,11 +33,22 @@ function Stat({ k, v }: { k: string; v: number | string }) {
 export function AdminView() {
   const ov = useResource<{ overview: Overview }>(() => api.get('/api/admin/overview'));
   const users = useResource<{ users: User[] }>(() => api.get('/api/admin/users'));
+  const [q, setQ] = useState('');
+  const [confirm, setConfirm] = useState<{ id: string; name: string } | null>(null);
 
   async function setStatus(userId: string, status: 'active' | 'suspended') {
     await api.post('/api/admin/users/status', { userId, status }).catch(() => {});
     users.reload();
   }
+  function doSuspend() {
+    if (confirm) setStatus(confirm.id, 'suspended');
+    setConfirm(null);
+  }
+
+  const allUsers = users.data?.users ?? [];
+  const filtered = q.trim()
+    ? allUsers.filter((u) => `${u.displayName ?? ''} ${u.email}`.toLowerCase().includes(q.toLowerCase()))
+    : allUsers;
 
   return (
     <div>
@@ -45,7 +57,7 @@ export function AdminView() {
       <section style={{ marginTop: 'var(--sp-5)' }}>
         <div className="eyebrow" style={{ marginBottom: 'var(--sp-3)' }}>Visão operacional</div>
         {ov.loading ? (
-          <Loading />
+          <SkeletonGrid count={4} cols={4} />
         ) : ov.error || !ov.data ? (
           <Banner kind="error">{ov.error ?? 'erro'}</Banner>
         ) : (
@@ -66,30 +78,59 @@ export function AdminView() {
         <div className="eyebrow" style={{ marginBottom: 'var(--sp-3)' }}>Usuários do tenant</div>
         <div className="card">
           {users.loading ? (
-            <Loading />
+            <SkeletonGrid count={3} cols={3} />
           ) : users.error || !users.data ? (
             <Banner kind="error">{users.error ?? 'erro'}</Banner>
-          ) : users.data.users.length === 0 ? (
+          ) : allUsers.length === 0 ? (
             <EmptyState title="Nenhum usuário" />
           ) : (
-            users.data.users.map((u) => (
-              <div className="row-item" key={u.id}>
-                <span style={{ flex: 1 }}>
-                  <b>{u.displayName ?? u.email}</b>{' '}
-                  <span className="muted" style={{ fontSize: 13 }}>{u.role}</span>
-                </span>
-                <span className={`tag ${u.status === 'active' ? 'tag-green' : 'tag-gray'}`}>{u.status}</span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setStatus(u.id, u.status === 'active' ? 'suspended' : 'active')}
-                >
-                  {u.status === 'active' ? 'Suspender' : 'Reativar'}
-                </button>
+            <>
+              <div className="admin-toolbar">
+                <input
+                  className="input"
+                  placeholder="Buscar por nome ou e-mail…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  aria-label="Buscar usuários"
+                />
+                <span className="admin-count">{filtered.length} de {allUsers.length}</span>
               </div>
-            ))
+              {filtered.length === 0 ? (
+                <EmptyState title="Nenhum usuário encontrado" hint="Ajuste a busca." />
+              ) : (
+                filtered.map((u) => (
+                  <div className="row-item" key={u.id} style={{ flexWrap: 'wrap' }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <b>{u.displayName ?? u.email}</b>{' '}
+                      <span className="muted" style={{ fontSize: 13 }}>{u.role}</span>
+                    </span>
+                    <StatusTag status={u.status} />
+                    {u.status === 'active' ? (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setConfirm({ id: u.id, name: u.displayName ?? u.email })}>
+                        Suspender
+                      </button>
+                    ) : (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setStatus(u.id, 'active')}>
+                        Reativar
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </>
           )}
         </div>
       </section>
+
+      <ConfirmDialog
+        open={confirm !== null}
+        title="Suspender usuário?"
+        message={confirm ? `${confirm.name} perderá o acesso até ser reativado.` : ''}
+        confirmLabel="Suspender"
+        cancelLabel="Voltar"
+        onConfirm={doSuspend}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 }

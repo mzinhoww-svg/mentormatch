@@ -19,6 +19,8 @@ export const BRAND_DEFAULTS = {
   logoUrl: null as string | null,
   programName: 'Programa de Mentoria',
   locale: 'pt-BR',
+  fontFamily: null as string | null, // null = use the product's default type stack
+  borderRadius: null as string | null, // null = use the product's default radius
 } as const;
 
 export const SUPPORTED_LOCALES = ['pt-BR', 'en-US', 'es-ES', 'es-419'] as const;
@@ -34,6 +36,12 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(value);
 }
 
+const RADIUS_RE = /^\d{1,3}(px|rem|%)?$/;
+/** Accepts simple CSS length tokens like "4px", "34px", "0.5rem", "50%". */
+export function isValidRadius(value: unknown): value is string {
+  return typeof value === 'string' && RADIUS_RE.test(value.trim());
+}
+
 export interface StoredBranding {
   displayName?: string | null;
   logoUrl?: string | null;
@@ -41,6 +49,8 @@ export interface StoredBranding {
   secondaryColor?: string | null;
   programName?: string | null;
   locale?: string | null;
+  fontFamily?: string | null;
+  borderRadius?: string | null;
 }
 
 export interface ResolvedBranding {
@@ -52,6 +62,8 @@ export interface ResolvedBranding {
   paperColor: string;
   programName: string;
   locale: string;
+  fontFamily: string | null;
+  borderRadius: string | null;
 }
 
 /**
@@ -72,5 +84,8 @@ export function resolveBranding(stored: StoredBranding | null | undefined): Reso
     paperColor: BRAND_DEFAULTS.paperColor,
     programName: s.programName?.trim() ? s.programName : BRAND_DEFAULTS.programName,
     locale: isSupportedLocale(s.locale) ? s.locale : BRAND_DEFAULTS.locale,
+    // Free-form but sanitized: font family kept as-is (string), radius validated.
+    fontFamily: typeof s.fontFamily === 'string' && s.fontFamily.trim() ? s.fontFamily.trim() : BRAND_DEFAULTS.fontFamily,
+    borderRadius: isValidRadius(s.borderRadius) ? s.borderRadius!.trim() : BRAND_DEFAULTS.borderRadius,
   };
 }

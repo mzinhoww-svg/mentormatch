@@ -24,6 +24,7 @@ export default function PlanosPage() {
               {p.highlight ? <span className="badge">Mais escolhido</span> : null}
               <h3>{p.name}</h3>
               <div className="price">{p.tagline}</div>
+              <div className="mk-proof-k" style={{ marginBottom: 14 }}>{p.anchor}</div>
               <ul>
                 {p.features.map((f) => (
                   <li key={f}>{f}</li>

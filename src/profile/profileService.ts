@@ -18,6 +18,8 @@ export interface ProfileRecord {
   title: string | null;
   area: string | null;
   seniority: string | null;
+  avatarUrl: string | null;
+  linkedinUrl: string | null;
   status: 'active' | 'inactive';
   mentorAvailable: boolean;
   mentorPaused: boolean;
@@ -28,15 +30,25 @@ export interface ProfileInput {
   title?: string;
   area?: string;
   seniority?: string;
+  avatarUrl?: string | null;
+  linkedinUrl?: string | null;
 }
 
 const SELECT_PROFILE = `
   SELECT id,
          tenant_user_id  AS "tenantUserId",
-         bio, title, area, seniority, status,
+         bio, title, area, seniority,
+         avatar_url       AS "avatarUrl",
+         linkedin_url     AS "linkedinUrl",
+         status,
          mentor_available AS "mentorAvailable",
          mentor_paused    AS "mentorPaused"
   FROM profile WHERE tenant_user_id = $1`;
+
+const RETURNING_PROFILE = `
+  RETURNING id, tenant_user_id AS "tenantUserId", bio, title, area, seniority,
+            avatar_url AS "avatarUrl", linkedin_url AS "linkedinUrl", status,
+            mentor_available AS "mentorAvailable", mentor_paused AS "mentorPaused"`;
 
 export async function getProfile(tenantId: string, userId: string): Promise<ProfileRecord | null> {
   return withTenant(tenantId, async (db) => {
@@ -53,14 +65,20 @@ export async function upsertProfile(
 ): Promise<ProfileRecord> {
   const profile = await withTenant(tenantId, async (db) => {
     const res = await db.query<ProfileRecord>(
-      `INSERT INTO profile (tenant_id, tenant_user_id, bio, title, area, seniority)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO profile (tenant_id, tenant_user_id, bio, title, area, seniority, avatar_url, linkedin_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (tenant_id, tenant_user_id) DO UPDATE
          SET bio = EXCLUDED.bio, title = EXCLUDED.title, area = EXCLUDED.area,
-             seniority = EXCLUDED.seniority, updated_at = now()
-       RETURNING id, tenant_user_id AS "tenantUserId", bio, title, area, seniority, status,
-                 mentor_available AS "mentorAvailable", mentor_paused AS "mentorPaused"`,
-      [tenantId, userId, input.bio ?? null, input.title ?? null, input.area ?? null, input.seniority ?? null],
+             seniority = EXCLUDED.seniority,
+             avatar_url = COALESCE($7, profile.avatar_url),
+             linkedin_url = COALESCE($8, profile.linkedin_url),
+             updated_at = now()
+       ${RETURNING_PROFILE}`,
+      [
+        tenantId, userId,
+        input.bio ?? null, input.title ?? null, input.area ?? null, input.seniority ?? null,
+        input.avatarUrl ?? null, input.linkedinUrl ?? null,
+      ],
     );
     return res.rows[0]!;
   });
@@ -91,8 +109,7 @@ export async function activateProfile(tenantId: string, userId: string): Promise
       `INSERT INTO profile (tenant_id, tenant_user_id, status)
        VALUES ($1, $2, 'active')
        ON CONFLICT (tenant_id, tenant_user_id) DO UPDATE SET status = 'active', updated_at = now()
-       RETURNING id, tenant_user_id AS "tenantUserId", bio, title, area, seniority, status,
-                 mentor_available AS "mentorAvailable", mentor_paused AS "mentorPaused"`,
+       ${RETURNING_PROFILE}`,
       [tenantId, userId],
     );
     return res.rows[0]!;
@@ -114,8 +131,7 @@ async function setAvailabilityFields(
          SET mentor_available = COALESCE($3, profile.mentor_available),
              mentor_paused    = COALESCE($4, profile.mentor_paused),
              updated_at = now()
-       RETURNING id, tenant_user_id AS "tenantUserId", bio, title, area, seniority, status,
-                 mentor_available AS "mentorAvailable", mentor_paused AS "mentorPaused"`,
+       ${RETURNING_PROFILE}`,
       [tenantId, userId, fields.mentorAvailable ?? null, fields.mentorPaused ?? null],
     );
     return res.rows[0]!;
@@ -178,17 +194,63 @@ export async function listGoals(tenantId: string, userId: string): Promise<GoalR
   });
 }
 
+export interface ContactInfo {
+  contactEmail: string | null;
+  contactPhone: string | null;
+  contactWhatsapp: string | null;
+  contactPublic: boolean;
+}
+
 export interface ProfileView {
   profile: ProfileRecord | null;
+  contact: ContactInfo;
   skills: { offered: UserSkillRecord[]; sought: UserSkillRecord[]; interest: UserSkillRecord[] };
   goals: GoalRecord[];
   roles: DerivedRoles;
 }
 
-/** Composed view used by the (future) UI; derives dual-role flags. */
+async function getContactInfo(tenantId: string, userId: string): Promise<ContactInfo> {
+  return withTenant(tenantId, async (db) => {
+    const res = await db.query<ContactInfo>(
+      `SELECT contact_email AS "contactEmail", contact_phone AS "contactPhone",
+              contact_whatsapp AS "contactWhatsapp", contact_public AS "contactPublic"
+       FROM tenant_user WHERE id = $1`,
+      [userId],
+    );
+    return res.rows[0] ?? { contactEmail: null, contactPhone: null, contactWhatsapp: null, contactPublic: false };
+  });
+}
+
+/** Updates the current user's own contact details and visibility flag. */
+export async function updateContact(
+  tenantId: string,
+  userId: string,
+  input: { contactEmail?: string | null; contactPhone?: string | null; contactWhatsapp?: string | null; contactPublic?: boolean },
+): Promise<ContactInfo> {
+  const contact = await withTenant(tenantId, async (db) => {
+    const res = await db.query<ContactInfo>(
+      `UPDATE tenant_user SET
+         contact_email    = COALESCE($2, contact_email),
+         contact_phone    = COALESCE($3, contact_phone),
+         contact_whatsapp = COALESCE($4, contact_whatsapp),
+         contact_public   = COALESCE($5, contact_public),
+         updated_at = now()
+       WHERE id = $1
+       RETURNING contact_email AS "contactEmail", contact_phone AS "contactPhone",
+                 contact_whatsapp AS "contactWhatsapp", contact_public AS "contactPublic"`,
+      [userId, input.contactEmail ?? null, input.contactPhone ?? null, input.contactWhatsapp ?? null, input.contactPublic ?? null],
+    );
+    return res.rows[0]!;
+  });
+  await recordProfileEvent(tenantId, 'profile.updated', { actorId: userId });
+  return contact;
+}
+
+/** Composed view used by the UI; derives dual-role flags. */
 export async function getProfileView(tenantId: string, userId: string): Promise<ProfileView> {
-  const [profile, allSkills, goals] = await Promise.all([
+  const [profile, contact, allSkills, goals] = await Promise.all([
     getProfile(tenantId, userId),
+    getContactInfo(tenantId, userId),
     listUserSkills(tenantId, userId),
     listGoals(tenantId, userId),
   ]);
@@ -202,5 +264,5 @@ export async function getProfileView(tenantId: string, userId: string): Promise<
     mentorPaused: profile?.mentorPaused ?? false,
     hasSoughtSkills: skills.sought.length > 0,
   });
-  return { profile, skills, goals, roles };
+  return { profile, contact, skills, goals, roles };
 }

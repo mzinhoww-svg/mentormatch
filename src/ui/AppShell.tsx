@@ -71,6 +71,14 @@ export function AppShell({
         </header>
         <div className="content">{children}</div>
       </div>
+
+      <nav className="mm-bottom-nav" aria-label="Navegação (mobile)">
+        {items.slice(0, 5).map((it) => (
+          <a key={it.href} href={it.href} className={active === it.href ? 'active' : ''}>
+            {it.label}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }

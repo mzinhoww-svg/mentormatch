@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { AdminView } from '../views/AdminView.js';
 import { installFetch } from './fetchMock.js';
 
@@ -35,5 +35,10 @@ describe('AdminView (proofs 8 & 10: tenant-scoped metrics)', () => {
     expect(metrics.textContent).toContain('50%');
     // User list (tenant-scoped) rendered.
     expect(await screen.findByText('Marina Alves')).toBeTruthy();
+    // Account status shows a PT label (not the raw "active").
+    expect(screen.getByText('Ativa')).toBeTruthy();
+    // Suspending opens a confirmation dialog before acting.
+    fireEvent.click(screen.getByRole('button', { name: 'Suspender' }));
+    expect(await screen.findByRole('alertdialog')).toBeTruthy();
   });
 });

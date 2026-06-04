@@ -1,6 +1,6 @@
 'use client';
 import { api } from '../api.js';
-import { Loading, useResource } from '../components.js';
+import { SkeletonGrid, useResource } from '../components.js';
 import { Mark } from '../Mark.js';
 
 interface Summary {
@@ -39,20 +39,23 @@ export function HomeView() {
       </section>
 
       {loading || !data ? (
-        <Loading />
+        <SkeletonGrid count={3} />
       ) : (
         <div className="grid grid-3">
           <a className="card" href="/app/notifications" style={{ textDecoration: 'none' }}>
             <div className="stat-k">Não lidas</div>
             <div className="stat-v" style={{ marginTop: 10 }}>{data.unread}</div>
+            <span className="stat-go">ver todas →</span>
           </a>
           <a className="card" href="/app/mentorships" style={{ textDecoration: 'none' }}>
             <div className="stat-k">Mentorias ativas</div>
             <div className="stat-v" style={{ marginTop: 10 }}>{data.mentorships}</div>
+            <span className="stat-go">ver todas →</span>
           </a>
           <a className="card" href="/app/requests" style={{ textDecoration: 'none' }}>
             <div className="stat-k">Solicitações pendentes</div>
             <div className="stat-v" style={{ marginTop: 10 }}>{data.pendingRequests}</div>
+            <span className="stat-go">ver todas →</span>
           </a>
         </div>
       )}
