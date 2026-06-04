@@ -21,6 +21,7 @@ import {
 import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
 import { logger } from '../observability/logger.js';
+import { addDomainToEdge, verifyDomainOnEdge } from './vercelDomains.js';
 
 export interface CustomDomain {
   id: string;
@@ -88,6 +89,7 @@ export async function addCustomDomain(tenantId: string, domain: string): Promise
     )
   ).rows[0];
 
+  let result: CustomDomain;
   if (existing) {
     if (existing.tenant_id !== tenantId) throw expectedError(ErrorCode.CONFLICT, 'domain_taken');
     const updated = (
@@ -97,18 +99,26 @@ export async function addCustomDomain(tenantId: string, domain: string): Promise
         [existing.id, token],
       )
     ).rows[0]!;
-    return toDomain(updated);
+    result = toDomain(updated);
+  } else {
+    const inserted = (
+      await ownerPool().query<DomainRow>(
+        `INSERT INTO tenant_domain (tenant_id, domain, verification_token, verified)
+         VALUES ($1, $2, $3, false) RETURNING ${SELECT}`,
+        [tenantId, d, token],
+      )
+    ).rows[0]!;
+    logger.info('custom_domain.added', { tenantId, domain: d });
+    result = toDomain(inserted);
   }
 
-  const inserted = (
-    await ownerPool().query<DomainRow>(
-      `INSERT INTO tenant_domain (tenant_id, domain, verification_token, verified)
-       VALUES ($1, $2, $3, false) RETURNING ${SELECT}`,
-      [tenantId, d, token],
-    )
-  ).rows[0]!;
-  logger.info('custom_domain.added', { tenantId, domain: d });
-  return toDomain(inserted);
+  // Best-effort: register with the edge (Vercel) so it routes + issues TLS once
+  // DNS points. No-op when unconfigured; never blocks the local flow.
+  const edge = await addDomainToEdge(d);
+  if (!edge.ok && !edge.skipped) {
+    logger.warn('custom_domain.edge_register_failed', { tenantId, domain: d, error: edge.error });
+  }
+  return result;
 }
 
 export type TxtResolver = (hostname: string) => Promise<string[][]>;
@@ -150,6 +160,12 @@ export async function verifyCustomDomain(
     )
   ).rows[0]!;
   logger.info('custom_domain.verified', { tenantId, domain: d });
+
+  // Best-effort: ask the edge (Vercel) to (re)check its own challenge too.
+  const edge = await verifyDomainOnEdge(d);
+  if (!edge.ok && !edge.skipped) {
+    logger.warn('custom_domain.edge_verify_failed', { tenantId, domain: d, error: edge.error });
+  }
   return toDomain(updated);
 }
 
