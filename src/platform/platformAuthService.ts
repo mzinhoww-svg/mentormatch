@@ -110,3 +110,28 @@ export async function getActivePlatformAdmin(id: string): Promise<PlatformAdmin 
   const row = res.rows[0];
   return row ? toAdmin(row) : null;
 }
+
+/** Changes an admin's password after verifying the current one (generic error). */
+export async function changePlatformPassword(
+  adminId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw expectedError(ErrorCode.VALIDATION, 'weak_password');
+  }
+  const res = await ownerPool().query<{ password_hash: string }>(
+    `SELECT password_hash FROM platform_admin WHERE id = $1 AND status = 'active'`,
+    [adminId],
+  );
+  const row = res.rows[0];
+  if (!row || !(await verifyPassword(currentPassword ?? '', row.password_hash))) {
+    throw expectedError(ErrorCode.UNAUTHORIZED, 'invalid_credentials');
+  }
+  const passwordHash = await hashPassword(newPassword);
+  await ownerPool().query(
+    'UPDATE platform_admin SET password_hash = $2, updated_at = now() WHERE id = $1',
+    [adminId, passwordHash],
+  );
+  logger.info('platform.password_changed', { adminId });
+}

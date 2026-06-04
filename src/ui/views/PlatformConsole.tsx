@@ -53,6 +53,8 @@ export function PlatformConsole({ adminEmail }: { adminEmail: string }) {
               rows.map((t) => <TenantRowItem key={t.id} tenant={t} onChanged={() => tenants.reload()} />)
             )}
           </section>
+
+          <ChangePassword />
         </div>
       </div>
     </div>
@@ -174,5 +176,54 @@ function ProvisionForm({ onProvisioned }: { onProvisioned: () => void }) {
         {busy ? 'Provisionando…' : 'Provisionar'}
       </button>
     </form>
+  );
+}
+
+function ChangePassword() {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    if (next.length < 8) {
+      setMsg({ kind: 'error', text: 'A nova senha precisa ter ao menos 8 caracteres.' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post('/api/platform/password', { currentPassword: current, newPassword: next });
+      setMsg({ kind: 'ok', text: 'Senha alterada.' });
+      setCurrent('');
+      setNext('');
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card" style={{ marginTop: 'var(--sp-5)' }}>
+      <div className="card-h">Trocar minha senha</div>
+      {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
+      <form onSubmit={submit}>
+        <div className="grid grid-2">
+          <div className="field">
+            <label htmlFor="cur-pw">Senha atual</label>
+            <input id="cur-pw" className="input" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label htmlFor="new-pw">Nova senha</label>
+            <input id="new-pw" className="input" type="password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} required />
+          </div>
+        </div>
+        <button className="btn btn-primary" type="submit" disabled={busy}>
+          {busy ? 'Salvando…' : 'Trocar senha'}
+        </button>
+      </form>
+    </section>
   );
 }

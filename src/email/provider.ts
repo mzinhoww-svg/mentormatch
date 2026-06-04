@@ -6,6 +6,7 @@
  * RESEND_API_KEY authenticates the Resend transport.
  */
 import { logger } from '../observability/logger.js';
+import type { FetchLike } from '../http/fetchLike.js';
 
 export interface OutgoingEmail {
   to: string;
@@ -58,6 +59,8 @@ export class NoopEmailProvider implements EmailProvider {
  */
 export class ResendEmailProvider implements EmailProvider {
   readonly name = 'resend';
+  /** `fetchImpl` is an injectable seam (defaults to the global fetch). */
+  constructor(private readonly fetchImpl: FetchLike = fetch) {}
   async send(email: OutgoingEmail): Promise<SendResult> {
     const apiKey = process.env.RESEND_API_KEY?.trim();
     const from = process.env.EMAIL_FROM?.trim();
@@ -66,7 +69,7 @@ export class ResendEmailProvider implements EmailProvider {
       return { ok: false, error: 'resend_not_configured' };
     }
     try {
-      const res = await fetch('https://api.resend.com/emails', {
+      const res = await this.fetchImpl('https://api.resend.com/emails', {
         method: 'POST',
         headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
         body: JSON.stringify({ from, to: email.to, subject: email.subject, text: email.body }),
