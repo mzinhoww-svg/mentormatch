@@ -9,6 +9,7 @@
 
 import { appPool, ownerPool } from './pool.js';
 import { resolveTenantFromHost, type TenantResolution } from './resolveTenant.js';
+import { normalizeDomain } from './customDomain.js';
 import { ensureDefaultProgram } from '../program/programService.js';
 
 export interface TenantRecord {
@@ -49,10 +50,42 @@ export type ActiveTenantResolution =
  * is provisioned and active. Returns NO_TENANT for every non-tenant host or an
  * unprovisioned/suspended slug.
  */
+/**
+ * Resolves a host to a tenant via a VERIFIED custom domain (registry read, app
+ * role). Unverified domains never resolve — DNS verification proves control, so
+ * this is the anti-hijacking gate. Status is checked by the caller.
+ */
+export async function findTenantByCustomDomain(
+  rawHost: string | undefined | null,
+): Promise<TenantRecord | null> {
+  const domain = normalizeDomain(rawHost);
+  if (!domain) return null;
+  const res = await appPool().query<TenantRecord>(
+    `SELECT t.id, t.slug, t.name, t.status
+       FROM tenant_domain d JOIN tenant t ON t.id = d.tenant_id
+      WHERE d.domain = $1 AND d.verified = true`,
+    [domain],
+  );
+  return res.rows[0] ?? null;
+}
+
 export async function resolveActiveTenant(
   rawHost: string | undefined | null,
 ): Promise<ActiveTenantResolution> {
   const resolution = resolveTenantFromHost(rawHost);
+
+  // A host outside the base-domain family may be a tenant's verified custom
+  // domain. Only verified domains resolve (see findTenantByCustomDomain).
+  if (resolution.kind === 'UNKNOWN') {
+    const byDomain = await findTenantByCustomDomain(rawHost);
+    if (byDomain) {
+      if (byDomain.status !== 'active') {
+        return { kind: 'NO_TENANT', resolution, reason: 'tenant_not_active' };
+      }
+      return { kind: 'TENANT', tenant: byDomain };
+    }
+  }
+
   if (resolution.kind !== 'TENANT') {
     return { kind: 'NO_TENANT', resolution, reason: 'host_not_tenant' };
   }
