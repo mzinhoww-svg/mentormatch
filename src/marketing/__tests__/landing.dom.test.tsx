@@ -9,6 +9,10 @@ afterEach(cleanup);
 
 describe('Home (renders + branding applied)', () => {
   it('renders the value proposition, brand symbol and primary CTA', () => {
+    // The landing fires a funnel beacon on mount; neutralize it so no real
+    // request escapes (happy-dom's sendBeacon would otherwise hit the network).
+    (navigator as unknown as { sendBeacon: () => boolean }).sendBeacon = () => true;
+    installFetch({ 'POST /api/track': { body: { ok: true } } });
     render(<HomePage />);
     expect(screen.getByText('Ele circula.')).toBeTruthy();
     // Approved "A Corrente" symbol (not a monogram) is present in the hero.

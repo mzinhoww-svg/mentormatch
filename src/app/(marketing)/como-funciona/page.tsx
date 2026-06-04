@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { HOW_IT_WORKS } from '../../../marketing/content.js';
+import { FunnelTracker } from '../../../marketing/FunnelTracker.js';
 
 export const metadata: Metadata = {
   title: 'Como Funciona',
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export default function ComoFuncionaPage() {
   return (
     <section className="mk-section">
+      <FunnelTracker event="como_funciona_view" />
       <div className="mk-wrap">
         <div className="mk-eyebrow">Como funciona</div>
         <h1 className="mk-h2" style={{ marginBottom: 16 }}>Conhecimento em movimento, em escala.</h1>

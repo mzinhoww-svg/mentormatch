@@ -228,6 +228,16 @@ export function ProfileView({ displayName }: { displayName?: string }) {
   );
 }
 
+/** Proficiency levels for OFFERED skills (stored as the level string). */
+const SKILL_LEVELS = [
+  { value: 'iniciante', label: 'Iniciante' },
+  { value: 'pleno', label: 'Pleno' },
+  { value: 'avancado', label: 'Avançado' },
+];
+const LEVEL_LABEL: Record<string, string> = Object.fromEntries(
+  SKILL_LEVELS.map((l) => [l.value, l.label]),
+);
+
 function SkillEditor({
   title, relation, skills, catalog, onChange, onError,
 }: {
@@ -241,6 +251,7 @@ function SkillEditor({
   const [text, setText] = useState('');
   const [openSug, setOpenSug] = useState(false);
   const [active, setActive] = useState(0);
+  const [level, setLevel] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
 
   const have = new Set(skills.map((s) => s.name.toLowerCase()));
@@ -269,8 +280,9 @@ function SkillEditor({
       setText('');
       return;
     }
+    const lvl = relation === 'offered' && level ? level : undefined;
     try {
-      await api.post('/api/profile/skills', { name: clean, relation });
+      await api.post('/api/profile/skills', { name: clean, relation, ...(lvl ? { level: lvl } : {}) });
       setText('');
       setOpenSug(false);
       setActive(0);
@@ -338,11 +350,30 @@ function SkillEditor({
           {skills.map((s) => (
             <span key={s.id} className={`skill-pill ${relation}`}>
               {s.name}
+              {s.level ? <em className="skill-lvl">{LEVEL_LABEL[s.level] ?? s.level}</em> : null}
               <button onClick={() => remove(s.id)} aria-label={`Remover ${s.name}`}><CloseX /></button>
             </span>
           ))}
         </div>
       )}
+
+      {relation === 'offered' ? (
+        <div className="field" style={{ marginBottom: 'var(--sp-3)' }}>
+          <label htmlFor={`lvl-${relation}`}>Nível (para a próxima habilidade)</label>
+          <select
+            id={`lvl-${relation}`}
+            className="input"
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+            style={{ maxWidth: 220 }}
+          >
+            <option value="">Sem nível</option>
+            {SKILL_LEVELS.map((l) => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       <div className="skill-typeahead" ref={boxRef}>
         <input
