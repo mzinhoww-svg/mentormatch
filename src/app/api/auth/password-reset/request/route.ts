@@ -2,6 +2,7 @@ import { requestPasswordReset } from '../../../../../auth/authService.js';
 import { resolveActiveTenant } from '../../../../../tenancy/admin.js';
 import { getSettings } from '../../../../../settings/settingsService.js';
 import { sendResetPasswordEmail } from '../../../../../email/transactional.js';
+import { emailBrandFromBranding } from '../../../../../email/emailBrand.js';
 import { json, respondError } from '../../../../../auth/http.js';
 
 export const runtime = 'nodejs';
@@ -22,8 +23,8 @@ export async function POST(request: Request): Promise<Response> {
     if (token) {
       const resolution = await resolveActiveTenant(host);
       if (resolution.kind === 'TENANT') {
-        const tenantName =
-          (await getSettings(resolution.tenant.id)).branding.displayName ?? 'MentorMatch';
+        const branding = (await getSettings(resolution.tenant.id)).branding;
+        const tenantName = branding.displayName ?? resolution.tenant.name ?? 'MentorMatch';
         const cleanHost = (host ?? '').split(':')[0];
         await sendResetPasswordEmail(
           {
@@ -32,6 +33,7 @@ export async function POST(request: Request): Promise<Response> {
             tenantName,
             setPasswordUrl: `https://${cleanHost}/set-password?token=${encodeURIComponent(token)}`,
             validDays: 1,
+            brand: emailBrandFromBranding(branding, resolution.tenant.name),
           },
           resolution.tenant.id,
         );

@@ -5,16 +5,19 @@
  * deliver the admin's first set-password link synchronously, because the Vercel
  * cron that drained the outbox was removed on the Hobby plan.
  *
- * The body builder is pure (unit-testable, no network); the send wrapper never
- * throws — a provider failure is returned as { ok: false } so provisioning can
- * fall back to printing the link for manual delivery.
+ * The body builder is pure (unit-testable, no network); it renders a branded
+ * HTML email plus a plain-text fallback. The send wrapper never throws — a
+ * provider failure is returned as { ok: false } so provisioning can fall back to
+ * printing the link for manual delivery.
  */
 import { getEmailProvider, type EmailProvider, type SendResult } from './provider.js';
+import { renderBrandedEmail } from './emailLayout.js';
+import { DEFAULT_EMAIL_BRAND, type EmailBrand } from './emailBrand.js';
 
 export interface SetPasswordEmailContext {
-  /** Admin recipient address. */
+  /** Recipient address. */
   to: string;
-  /** Admin display name (for the greeting), or null. */
+  /** Recipient display name (for the greeting), or null. */
   recipientName: string | null;
   /** Tenant display name, shown in subject/body/sign-off. */
   tenantName: string;
@@ -22,6 +25,8 @@ export interface SetPasswordEmailContext {
   setPasswordUrl: string;
   /** How long the link stays valid, in days (for the copy). */
   validDays: number;
+  /** Optional tenant brand for the HTML (logo + accent). Defaults to the kit. */
+  brand?: EmailBrand;
 }
 
 /** The template key recorded for this transactional email. */
@@ -29,22 +34,32 @@ export const SET_PASSWORD_TEMPLATE_KEY = 'admin.set_password';
 /** The synthetic origin event for this transactional email. */
 export const SET_PASSWORD_ORIGIN_EVENT = 'tenant.provisioned';
 
-/** Pure: renders the set-password email subject + body. No I/O. */
+/** Resolves the brand for an email: the explicit one, or a kit default keyed to
+ *  the tenant name so even an unbranded tenant gets its name in the header. */
+function brandFor(ctx: SetPasswordEmailContext): EmailBrand {
+  return ctx.brand ?? { ...DEFAULT_EMAIL_BRAND, tenantName: ctx.tenantName };
+}
+
+/** Pure: renders the set-password email (subject + HTML + text). No I/O. */
 export function buildSetPasswordEmail(ctx: SetPasswordEmailContext): {
   subject: string;
   body: string;
+  html: string;
   templateKey: string;
 } {
   const hi = ctx.recipientName ? `Olá, ${ctx.recipientName}.` : 'Olá.';
   const subject = `Acesso ao ${ctx.tenantName}: defina sua senha`;
-  const body =
-    `${hi}\n\n` +
-    `Sua conta no ${ctx.tenantName} foi criada. ` +
-    `Defina sua senha de acesso pelo link abaixo (válido por ${ctx.validDays} dias):\n\n` +
-    `${ctx.setPasswordUrl}\n\n` +
-    `Se você não reconhece este convite, ignore este e-mail.\n\n` +
-    `— ${ctx.tenantName} · Passe adiante.`;
-  return { subject, body, templateKey: SET_PASSWORD_TEMPLATE_KEY };
+  const { html, text } = renderBrandedEmail({
+    brand: brandFor(ctx),
+    heading: 'Defina sua senha',
+    paragraphs: [
+      hi,
+      `Sua conta no ${ctx.tenantName} foi criada. Defina sua senha de acesso pelo botão abaixo (válido por ${ctx.validDays} dias):`,
+    ],
+    button: { label: 'Definir minha senha', url: ctx.setPasswordUrl },
+    footerNote: 'Se você não reconhece este convite, ignore este e-mail.',
+  });
+  return { subject, body: text, html, templateKey: SET_PASSWORD_TEMPLATE_KEY };
 }
 
 /**
@@ -56,12 +71,13 @@ export async function sendSetPasswordEmail(
   tenantId: string,
   provider: EmailProvider = getEmailProvider(),
 ): Promise<SendResult> {
-  const { subject, body, templateKey } = buildSetPasswordEmail(ctx);
+  const { subject, body, html, templateKey } = buildSetPasswordEmail(ctx);
   try {
     return await provider.send({
       to: ctx.to,
       subject,
       body,
+      html,
       templateKey,
       tenantId,
       originEvent: SET_PASSWORD_ORIGIN_EVENT,
@@ -79,18 +95,22 @@ export const RESET_PASSWORD_TEMPLATE_KEY = 'auth.password_reset';
 export function buildResetPasswordEmail(ctx: SetPasswordEmailContext): {
   subject: string;
   body: string;
+  html: string;
   templateKey: string;
 } {
   const hi = ctx.recipientName ? `Olá, ${ctx.recipientName}.` : 'Olá.';
   const subject = `Redefinir sua senha — ${ctx.tenantName}`;
-  const body =
-    `${hi}\n\n` +
-    `Recebemos um pedido para redefinir sua senha no ${ctx.tenantName}. ` +
-    `Crie uma nova senha pelo link abaixo (válido por aproximadamente 1 hora):\n\n` +
-    `${ctx.setPasswordUrl}\n\n` +
-    `Se não foi você, ignore este e-mail — sua senha atual continua válida.\n\n` +
-    `— ${ctx.tenantName} · Passe adiante.`;
-  return { subject, body, templateKey: RESET_PASSWORD_TEMPLATE_KEY };
+  const { html, text } = renderBrandedEmail({
+    brand: brandFor(ctx),
+    heading: 'Redefinir sua senha',
+    paragraphs: [
+      hi,
+      `Recebemos um pedido para redefinir sua senha no ${ctx.tenantName}. Crie uma nova senha pelo botão abaixo (válido por aproximadamente 1 hora):`,
+    ],
+    button: { label: 'Redefinir senha', url: ctx.setPasswordUrl },
+    footerNote: 'Se não foi você, ignore este e-mail — sua senha atual continua válida.',
+  });
+  return { subject, body: text, html, templateKey: RESET_PASSWORD_TEMPLATE_KEY };
 }
 
 /** Sends the password-reset email (never throws). */
@@ -99,12 +119,13 @@ export async function sendResetPasswordEmail(
   tenantId: string,
   provider: EmailProvider = getEmailProvider(),
 ): Promise<SendResult> {
-  const { subject, body, templateKey } = buildResetPasswordEmail(ctx);
+  const { subject, body, html, templateKey } = buildResetPasswordEmail(ctx);
   try {
     return await provider.send({
       to: ctx.to,
       subject,
       body,
+      html,
       templateKey,
       tenantId,
       originEvent: 'auth.password_reset_requested',

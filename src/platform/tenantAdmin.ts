@@ -15,6 +15,7 @@ import { withTenant } from '../tenancy/withTenant.js';
 import { createResetToken } from '../auth/session.js';
 import { sendSetPasswordEmail } from '../email/transactional.js';
 import { getEmailProvider, type EmailProvider } from '../email/provider.js';
+import { emailBrandFromBranding, type EmailBrand } from '../email/emailBrand.js';
 import { inviteMember } from '../admin/memberInvite.js';
 import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
@@ -27,12 +28,15 @@ function normalize(email: string): string {
 }
 
 /** Resolves an existing tenant to the data the email/link flows need. */
-async function tenantContext(tenantId: string): Promise<{ slug: string; host: string; tenantName: string }> {
+async function tenantContext(
+  tenantId: string,
+): Promise<{ slug: string; host: string; tenantName: string; brand: EmailBrand }> {
   const tenant = await getTenantById(tenantId);
   if (!tenant) throw expectedError(ErrorCode.NOT_FOUND, 'tenant_not_found');
   const host = `${tenant.slug}.${getBaseDomain()}`;
-  const tenantName = (await getSettings(tenantId)).branding.displayName ?? tenant.name;
-  return { slug: tenant.slug, host, tenantName };
+  const branding = (await getSettings(tenantId)).branding;
+  const tenantName = branding.displayName ?? tenant.name;
+  return { slug: tenant.slug, host, tenantName, brand: emailBrandFromBranding(branding, tenant.name) };
 }
 
 function setPasswordUrl(host: string, token: string): string {
@@ -58,7 +62,7 @@ export async function setTenantAdmin(
 ): Promise<SetTenantAdminResult> {
   const email = (input.email || '').trim();
   if (!email) throw expectedError(ErrorCode.VALIDATION, 'email_required');
-  const { host, tenantName } = await tenantContext(input.tenantId);
+  const { host, tenantName, brand } = await tenantContext(input.tenantId);
 
   const existing = await withTenant(input.tenantId, (db) =>
     db.query<{ id: string }>('SELECT id FROM tenant_user WHERE normalized_email = $1', [
@@ -79,7 +83,7 @@ export async function setTenantAdmin(
   }
 
   const invited = await inviteMember(
-    { host, tenantName, email, displayName: input.displayName, role: 'admin' },
+    { host, tenantName, email, displayName: input.displayName, role: 'admin', brand },
     provider,
   );
   return {
@@ -103,7 +107,7 @@ export async function resendSetPassword(
 ): Promise<ResendResult> {
   const email = (input.email || '').trim();
   if (!email) throw expectedError(ErrorCode.VALIDATION, 'email_required');
-  const { host, tenantName } = await tenantContext(input.tenantId);
+  const { host, tenantName, brand } = await tenantContext(input.tenantId);
 
   const found = await withTenant(input.tenantId, (db) =>
     db.query<{ id: string; display_name: string | null }>(
@@ -121,7 +125,7 @@ export async function resendSetPassword(
   });
   const url = setPasswordUrl(host, token);
   const send = await sendSetPasswordEmail(
-    { to: email, recipientName: user.display_name, tenantName, setPasswordUrl: url, validDays: 7 },
+    { to: email, recipientName: user.display_name, tenantName, setPasswordUrl: url, validDays: 7, brand },
     input.tenantId,
     provider,
   );

@@ -10,6 +10,7 @@ import { api } from './api.js';
 import { navForRole, activeHref } from './nav.js';
 import { brandingStyle, type Branding } from './branding.js';
 import { initials } from './components.js';
+import { FontLoader } from './FontLoader.js';
 
 /** Topbar notification bell with an unread count. Polls on mount + when the
  *  route changes (cheap, same-origin) so the badge stays roughly fresh. */
@@ -62,6 +63,7 @@ export function AppShell({
 
   return (
     <div className="app-shell" style={brandingStyle(branding)}>
+      <FontLoader fontFamily={branding.fontFamily} />
       <aside className="side">
         <div className="side-brand">
           <Lockup height={22} ink="var(--argila-50)" />

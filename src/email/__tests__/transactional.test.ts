@@ -20,19 +20,33 @@ const baseCtx: SetPasswordEmailContext = {
 };
 
 describe('buildSetPasswordEmail', () => {
-  it('renders subject + body with the tenant, link and validity', () => {
-    const { subject, body, templateKey } = buildSetPasswordEmail(baseCtx);
+  it('renders subject + text + HTML with the tenant, link and validity', () => {
+    const { subject, body, html, templateKey } = buildSetPasswordEmail(baseCtx);
     expect(subject).toContain('Acme Inc');
+    // Plain-text fallback carries everything.
     expect(body).toContain('Ana Admin');
     expect(body).toContain(baseCtx.setPasswordUrl);
     expect(body).toContain('7 dias');
+    // Branded HTML has the CTA button (link + label) and the sign-off.
+    expect(html).toContain(baseCtx.setPasswordUrl);
+    expect(html).toContain('Definir minha senha');
+    expect(html).toContain('Acme Inc');
+    expect(html.startsWith('<!doctype html>')).toBe(true);
     expect(templateKey).toBe(SET_PASSWORD_TEMPLATE_KEY);
   });
 
   it('falls back to a neutral greeting without a name', () => {
     const { body } = buildSetPasswordEmail({ ...baseCtx, recipientName: null });
-    expect(body.startsWith('Olá.')).toBe(true);
+    expect(body).toContain('Olá.');
     expect(body).not.toContain('Olá, ');
+  });
+
+  it('uses the tenant brand color for the CTA when a brand is provided', () => {
+    const { html } = buildSetPasswordEmail({
+      ...baseCtx,
+      brand: { tenantName: 'Acme Inc', logoUrl: null, primaryColor: '#2F8F2F', onPrimary: '#FFFFFF', programName: 'Prog' },
+    });
+    expect(html).toContain('#2F8F2F');
   });
 });
 
@@ -56,6 +70,7 @@ describe('sendSetPasswordEmail', () => {
       originEvent: SET_PASSWORD_ORIGIN_EVENT,
     });
     expect(calls[0]!.body).toContain(baseCtx.setPasswordUrl);
+    expect(calls[0]!.html).toContain(baseCtx.setPasswordUrl);
   });
 
   it('never throws — a throwing provider becomes { ok: false }', async () => {

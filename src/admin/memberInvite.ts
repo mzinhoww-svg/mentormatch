@@ -9,6 +9,7 @@ import { signup } from '../auth/authService.js';
 import { createResetToken } from '../auth/session.js';
 import { sendSetPasswordEmail } from '../email/transactional.js';
 import { getEmailProvider, type EmailProvider } from '../email/provider.js';
+import { type EmailBrand } from '../email/emailBrand.js';
 import { logger } from '../observability/logger.js';
 
 const ALLOWED_ROLES = new Set(['member', 'program_manager', 'admin']);
@@ -20,6 +21,8 @@ export interface InviteMemberInput {
   email: string;
   displayName?: string;
   role?: string;
+  /** Optional tenant brand for the email (logo + accent). */
+  brand?: EmailBrand;
 }
 export interface InviteMemberResult {
   userId: string;
@@ -56,6 +59,7 @@ export async function inviteMember(
       tenantName: input.tenantName,
       setPasswordUrl,
       validDays: 7,
+      brand: input.brand,
     },
     created.tenantId,
     provider,

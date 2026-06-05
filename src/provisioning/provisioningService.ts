@@ -15,10 +15,11 @@ import { createResetToken } from '../auth/session.js';
 import { logger } from '../observability/logger.js';
 import { getEmailProvider, type EmailProvider } from '../email/provider.js';
 import { sendSetPasswordEmail } from '../email/transactional.js';
+import { emailBrandFromBranding } from '../email/emailBrand.js';
 import { upsertProfile, activateProfile, setMentorAvailable } from '../profile/profileService.js';
 import { createSkill, addUserSkill } from '../profile/skillService.js';
 import { getDefaultProgram, addParticipant } from '../program/programService.js';
-import { updateSettings } from '../settings/settingsService.js';
+import { updateSettings, getSettings } from '../settings/settingsService.js';
 import { requestMentorship, acceptRequest } from '../mentorship/mentorshipService.js';
 import { requestSession, confirmSession, completeSession } from '../session/sessionService.js';
 import {
@@ -343,6 +344,7 @@ export async function provisionRealTenant(
   // removed on Hobby). Never fails provisioning — the token is also returned so
   // the CLI/operator can deliver it manually when email is unconfigured.
   const setPasswordUrlProd = `https://${tenant.slug}.${getBaseDomain()}/set-password?token=${encodeURIComponent(setPasswordToken)}`;
+  const brand = emailBrandFromBranding((await getSettings(tenant.id)).branding, tenant.name);
   const send = await sendSetPasswordEmail(
     {
       to: plan.admin.email,
@@ -350,6 +352,7 @@ export async function provisionRealTenant(
       tenantName: tenant.name,
       setPasswordUrl: setPasswordUrlProd,
       validDays: Math.max(1, Math.round(ttlSeconds / 86_400)),
+      brand,
     },
     tenant.id,
     provider,
