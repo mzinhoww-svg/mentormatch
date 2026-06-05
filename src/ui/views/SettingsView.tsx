@@ -37,8 +37,9 @@ export function SettingsView() {
         </p>
         {NOTIFICATION_TYPES.map((t) => {
           const p = prefMap.get(t);
+          // Default ON for both channels (matches the server default).
           const inApp = p ? p.inApp : true;
-          const email = p ? p.email : false;
+          const email = p ? p.email : true;
           return (
             <div className="pref-row" key={t}>
               <span className="pref-name">{notificationLabel(t)}</span>

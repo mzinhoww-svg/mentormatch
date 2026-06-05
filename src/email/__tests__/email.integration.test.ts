@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { createTenant, type TenantRecord } from '../../tenancy/admin.js';
 import { withTenant } from '../../tenancy/withTenant.js';
 import { appPool, closePools } from '../../tenancy/pool.js';
@@ -11,7 +11,7 @@ import {
   sendPendingEmails,
   processTenantEmails,
 } from '../emailService.js';
-import type { EmailProvider, OutgoingEmail, SendResult } from '../provider.js';
+import { __setEmailProvider, type EmailProvider, type OutgoingEmail, type SendResult } from '../provider.js';
 
 const hasDb = Boolean(process.env.DATABASE_URL && process.env.DIRECT_URL);
 const rand = () => Math.random().toString(36).slice(2, 7);
@@ -62,24 +62,36 @@ const fresh = (l: string) => createTenant({ slug: `eml${l}${rand()}`, name: `EML
 
 describe.skipIf(!hasDb)('Email delivery foundation (integration)', () => {
   let shared: TenantRecord;
+  // Domain flows deliver email SYNCHRONOUSLY via the configured provider; capture
+  // it globally so domain-flow tests can assert what was sent.
+  let cap: CaptureProvider;
+
   beforeAll(async () => {
     shared = await fresh('sh');
+  });
+  beforeEach(() => {
+    cap = new CaptureProvider();
+    __setEmailProvider(cap);
+  });
+  afterEach(() => {
+    __setEmailProvider(null);
   });
   afterAll(async () => {
     await closePools();
   });
 
+  const sentTo = (email: string) => cap.sent.filter((e) => e.to === email);
+
   it('1. tenant A never emails tenant B', async () => {
     const a = await fresh('a1');
     const b = await fresh('b1');
     const u = await createUser(a.id, 'Ana');
-    await setPreference(a.id, u.id, 'mentorship.requested', { email: true });
+    // emitNotification only RECORDS — drain the outbox explicitly here.
     await emitNotification(a.id, { type: 'mentorship.requested', targetUserId: u.id, originEvent: 'mentorship.requested' });
-
-    const cap = new CaptureProvider();
     await processTenantEmails(a.id, cap);
+
+    expect(sentTo(u.email).length).toBe(1);
     expect(cap.sent.every((e) => e.to === u.email)).toBe(true);
-    expect(cap.sent.length).toBe(1);
 
     // B sees nothing and queues/sends nothing.
     const crossB = await withTenant(b.id, (db) => db.query('SELECT id FROM email_message'));
@@ -87,29 +99,25 @@ describe.skipIf(!hasDb)('Email delivery foundation (integration)', () => {
     expect(await processTenantEmails(b.id, new CaptureProvider())).toMatchObject({ queued: 0, sent: 0 });
   });
 
-  it('2. request / accept / reject produce queued email', async () => {
+  it('2. request / accept / reject deliver email by default (synchronously)', async () => {
     const t = await fresh('a2');
     const m = await mentor(t.id, 'Mentor');
     const mn = await createUser(t.id, 'Mentee');
-    await setPreference(t.id, m.id, 'mentorship.requested', { email: true });
-    await setPreference(t.id, mn.id, 'mentorship.accepted', { email: true });
 
     const req = await requestMentorship(t.id, mn.id, { mentorId: m.id });
     await acceptRequest(t.id, m.id, req.id);
 
-    // reject path on a second pair
     const m2 = await mentor(t.id, 'Mentor2');
     const mn2 = await createUser(t.id, 'Mentee2');
-    await setPreference(t.id, mn2.id, 'mentorship.rejected', { email: true });
     const req2 = await requestMentorship(t.id, mn2.id, { mentorId: m2.id });
     await rejectRequest(t.id, m2.id, req2.id);
 
-    const cap = new CaptureProvider();
-    await processTenantEmails(t.id, cap);
     const events = cap.sent.map((e) => e.originEvent);
     expect(events).toContain('mentorship.requested');
     expect(events).toContain('mentorship.accepted');
     expect(events).toContain('mentorship.rejected');
+    // Delivered emails carry branded HTML.
+    expect(cap.sent.every((e) => typeof e.html === 'string' && e.html.includes('<!doctype html>'))).toBe(true);
 
     const rows = await withTenant(t.id, (db) =>
       db.query<{ c: number }>("SELECT count(*)::int AS c FROM email_message WHERE status = 'sent'"),
@@ -117,17 +125,14 @@ describe.skipIf(!hasDb)('Email delivery foundation (integration)', () => {
     expect(rows.rows[0]!.c).toBeGreaterThanOrEqual(3);
   });
 
-  it('3. a session event produces email when configured', async () => {
+  it('3. a session event delivers email by default', async () => {
     const t = await fresh('a3');
     const m = await mentor(t.id, 'Mentor');
     const mn = await createUser(t.id, 'Mentee');
-    await setPreference(t.id, m.id, 'session.requested', { email: true });
     const req = await requestMentorship(t.id, mn.id, { mentorId: m.id });
     const acc = await acceptRequest(t.id, m.id, req.id);
     await requestSession(t.id, mn.id, { mentorshipId: acc.mentorshipId, scheduledAt: soon() });
 
-    const cap = new CaptureProvider();
-    await processTenantEmails(t.id, cap);
     expect(cap.sent.map((e) => e.originEvent)).toContain('session.requested');
   });
 
@@ -136,16 +141,13 @@ describe.skipIf(!hasDb)('Email delivery foundation (integration)', () => {
     const contact = `secret-${rand()}@contact.com`;
     const m = await mentor(t.id, 'Mentor', contact);
     const mn = await createUser(t.id, 'Mentee');
-    await setPreference(t.id, m.id, 'mentorship.requested', { email: true });
     await requestMentorship(t.id, mn.id, { mentorId: m.id });
 
-    const cap = new CaptureProvider();
-    await processTenantEmails(t.id, cap);
     const blob = JSON.stringify(cap.sent);
     expect(blob).not.toContain(contact);
     expect(blob.toLowerCase()).not.toContain('contact_email');
     // Recipient is the user's own account email, not their (hidden) ContactInfo.
-    expect(cap.sent[0]!.to).toBe(m.email);
+    expect(sentTo(m.email).length).toBeGreaterThanOrEqual(1);
   });
 
   it('5. a query without tenant context still fails (default-deny)', async () => {
@@ -159,16 +161,14 @@ describe.skipIf(!hasDb)('Email delivery foundation (integration)', () => {
     ).rejects.toThrow();
   });
 
-  it('6. email preferences are respected', async () => {
+  it('6. an email=false preference suppresses the email (default is on)', async () => {
     const t = await fresh('a6');
-    const on = await createUser(t.id, 'On');
+    const on = await createUser(t.id, 'On'); // keeps the default (email ON)
     const off = await createUser(t.id, 'Off');
-    await setPreference(t.id, on.id, 'mentorship.requested', { email: true });
-    // 'off' keeps the default (email off)
+    await setPreference(t.id, off.id, 'mentorship.requested', { email: false });
     await emitNotification(t.id, { type: 'mentorship.requested', targetUserId: on.id, originEvent: 'mentorship.requested' });
     await emitNotification(t.id, { type: 'mentorship.requested', targetUserId: off.id, originEvent: 'mentorship.requested' });
 
-    const cap = new CaptureProvider();
     await processTenantEmails(t.id, cap);
     expect(cap.sent.map((e) => e.to)).toEqual([on.email]);
   });
@@ -176,7 +176,7 @@ describe.skipIf(!hasDb)('Email delivery foundation (integration)', () => {
   it('7. pending → failed → (retry) → sent', async () => {
     const t = await fresh('a7');
     const u = await createUser(t.id, 'User');
-    await setPreference(t.id, u.id, 'mentorship.requested', { email: true });
+    // emitNotification records only (no drain), so the outbox state machine is testable.
     await emitNotification(t.id, { type: 'mentorship.requested', targetUserId: u.id, originEvent: 'mentorship.requested' });
 
     expect(await enqueuePendingEmails(t.id)).toBe(1);
@@ -206,20 +206,20 @@ describe.skipIf(!hasDb)('Email delivery foundation (integration)', () => {
     const t = await fresh('a8');
     const m = await mentor(t.id, 'Mentor');
     const mn = await createUser(t.id, 'Mentee');
-    await setPreference(t.id, m.id, 'mentorship.requested', { email: true });
+    __setEmailProvider(new FailingProvider()); // the synchronous drain will fail
 
     // Core domain op succeeds independently of email.
     const req = await requestMentorship(t.id, mn.id, { mentorId: m.id });
     expect(req.status).toBe('pending');
 
-    // Worker with a failing provider must not throw.
-    const result = await processTenantEmails(t.id, new FailingProvider());
-    expect(result.failed).toBeGreaterThanOrEqual(1);
-
-    // The request and its notification are intact.
+    // The email was attempted and marked failed, but the request is intact.
     const stillThere = await withTenant(t.id, (db) =>
       db.query<{ c: number }>('SELECT count(*)::int AS c FROM mentorship_request WHERE id = $1', [req.id]),
     );
     expect(stillThere.rows[0]!.c).toBe(1);
+    const failed = await withTenant(t.id, (db) =>
+      db.query<{ c: number }>("SELECT count(*)::int AS c FROM email_message WHERE status = 'failed'"),
+    );
+    expect(failed.rows[0]!.c).toBeGreaterThanOrEqual(1);
   });
 });
