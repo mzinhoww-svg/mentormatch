@@ -10,6 +10,7 @@ import { api, ApiError } from './api.js';
 import { Lockup } from './Mark.js';
 import { Banner } from './components.js';
 import { brandingStyle, type Branding } from './branding.js';
+import { FontLoader } from './FontLoader.js';
 
 const DEFAULTS: Branding = {
   displayName: null,
@@ -69,6 +70,7 @@ export function LoginForm() {
 
   return (
     <div className="auth-wrap" style={brandingStyle(branding)}>
+      <FontLoader fontFamily={branding.fontFamily} />
       <div className="auth-card card">
         <div style={{ marginBottom: 'var(--sp-5)' }}>
           {branding.logoUrl ? (

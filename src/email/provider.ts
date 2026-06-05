@@ -11,7 +11,10 @@ import type { FetchLike } from '../http/fetchLike.js';
 export interface OutgoingEmail {
   to: string;
   subject: string;
+  /** Plain-text body (always present — the fallback for text-only clients). */
   body: string;
+  /** Optional branded HTML body; when present it's sent alongside `body`. */
+  html?: string;
   templateKey: string;
   tenantId: string;
   originEvent: string;
@@ -72,7 +75,13 @@ export class ResendEmailProvider implements EmailProvider {
       const res = await this.fetchImpl('https://api.resend.com/emails', {
         method: 'POST',
         headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ from, to: email.to, subject: email.subject, text: email.body }),
+        body: JSON.stringify({
+          from,
+          to: email.to,
+          subject: email.subject,
+          text: email.body,
+          ...(email.html ? { html: email.html } : {}),
+        }),
       });
       if (!res.ok) {
         const detail = (await res.text().catch(() => '')).slice(0, 200);
