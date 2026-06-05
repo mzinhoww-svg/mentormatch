@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
-import HomePage from '../../app/(marketing)/page.js';
+// The institutional home content lives in MentorMatchHome; the page.tsx wrapper
+// is now an async host-aware Server Component (resolves tenant vs institutional).
+import { MentorMatchHome } from '../MentorMatchHome.js';
 import { MarketingNav } from '../MarketingNav.js';
 import { DemoForm } from '../DemoForm.js';
 import { installFetch, calledWith } from '../../ui/__tests__/fetchMock.js';
@@ -13,7 +15,7 @@ describe('Home (renders + branding applied)', () => {
     // request escapes (happy-dom's sendBeacon would otherwise hit the network).
     (navigator as unknown as { sendBeacon: () => boolean }).sendBeacon = () => true;
     installFetch({ 'POST /api/track': { body: { ok: true } } });
-    render(<HomePage />);
+    render(<MentorMatchHome />);
     expect(screen.getByText('Ele circula.')).toBeTruthy();
     // Approved "A Corrente" symbol (not a monogram) is present in the hero.
     // It is decorative (aria-hidden) now that the product mockup sits beside it.
