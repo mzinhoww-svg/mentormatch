@@ -12,6 +12,7 @@
 
 import { ErrorCode, httpStatusForCode } from './error-codes.js';
 import { redact, redactString } from './redaction.js';
+import { logger } from './logger.js';
 
 export interface AppErrorOptions {
   code?: ErrorCode;
@@ -116,7 +117,19 @@ export function serializeError(value: unknown): SerializedError {
 
 export type ErrorReporter = (error: unknown, context?: Record<string, unknown>) => void;
 
-let reporter: ErrorReporter | undefined;
+/**
+ * Default reporter: log unexpected errors through the central logger so a 500 is
+ * never silent (the message is redacted by serializeError). A real adapter
+ * (e.g. Sentry) can replace this via setErrorReporter.
+ */
+const defaultReporter: ErrorReporter = (error, context) => {
+  logger.error('unhandled_error', {
+    error: serializeError(error),
+    ...(context ? { context } : {}),
+  });
+};
+
+let reporter: ErrorReporter | undefined = defaultReporter;
 
 /**
  * Registers a reporter (e.g. a Sentry adapter). Wiring is intentionally deferred:
