@@ -16,6 +16,11 @@ import {
   isValidRadius,
   type ResolvedBranding,
 } from './branding.js';
+import {
+  resolveLandingContent,
+  type TenantLandingContent,
+  type LandingContentInput,
+} from '../marketing/landingContent.js';
 
 export type TenantStatus = 'active' | 'inactive';
 
@@ -24,6 +29,8 @@ export interface TenantSettings {
   status: TenantStatus;
   allowSelfSignup: boolean;
   defaultMentorCapacity: number;
+  /** Per-tenant employee-landing copy (sanitized; blank fields use fallbacks). */
+  landing: TenantLandingContent;
   /** True when an explicit settings row exists (vs. pure defaults). */
   customized: boolean;
 }
@@ -40,6 +47,7 @@ interface SettingsRow {
   status: TenantStatus;
   allow_self_signup: boolean;
   default_mentor_capacity: number;
+  landing: unknown;
 }
 
 function toSettings(row: SettingsRow | undefined): TenantSettings {
@@ -62,13 +70,14 @@ function toSettings(row: SettingsRow | undefined): TenantSettings {
     status: row?.status ?? 'active',
     allowSelfSignup: row?.allow_self_signup ?? true,
     defaultMentorCapacity: row?.default_mentor_capacity ?? 3,
+    landing: resolveLandingContent(row?.landing),
     customized: Boolean(row),
   };
 }
 
 const SELECT_ROW = `
   display_name, logo_url, primary_color, secondary_color, font_family, border_radius,
-  program_name, locale, status, allow_self_signup, default_mentor_capacity`;
+  program_name, locale, status, allow_self_signup, default_mentor_capacity, landing`;
 
 /**
  * Settings/branding cache, keyed by tenantId. getSettings is on hot paths (the
@@ -108,6 +117,11 @@ export async function getPublicBranding(tenantId: string): Promise<ResolvedBrand
   return (await getSettings(tenantId)).branding;
 }
 
+/** Public-safe per-tenant landing copy (for the employee landing page). */
+export async function getPublicLanding(tenantId: string): Promise<TenantLandingContent> {
+  return (await getSettings(tenantId)).landing;
+}
+
 export interface UpdateSettingsInput {
   displayName?: string | null;
   logoUrl?: string | null;
@@ -119,6 +133,8 @@ export interface UpdateSettingsInput {
   locale?: string;
   allowSelfSignup?: boolean;
   defaultMentorCapacity?: number;
+  /** When provided, replaces the per-tenant landing copy (sanitized on write). */
+  landing?: LandingContentInput | null;
 }
 
 function validate(input: UpdateSettingsInput): void {
@@ -149,12 +165,16 @@ export async function updateSettings(
 ): Promise<TenantSettings> {
   validate(input);
 
+  // Sanitize landing copy on write; null param leaves the stored value intact.
+  const landingJson =
+    input.landing !== undefined ? JSON.stringify(resolveLandingContent(input.landing)) : null;
+
   const settings = await withTenant(tenantId, async (db) => {
     const res = await db.query<SettingsRow>(
       `INSERT INTO tenant_settings
          (tenant_id, display_name, logo_url, primary_color, secondary_color,
-          font_family, border_radius, program_name, locale, allow_self_signup, default_mentor_capacity)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9,'pt-BR'), COALESCE($10,true), COALESCE($11,3))
+          font_family, border_radius, program_name, locale, allow_self_signup, default_mentor_capacity, landing)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9,'pt-BR'), COALESCE($10,true), COALESCE($11,3), $12::jsonb)
        ON CONFLICT (tenant_id) DO UPDATE SET
          display_name = COALESCE($2, tenant_settings.display_name),
          logo_url = COALESCE($3, tenant_settings.logo_url),
@@ -166,6 +186,7 @@ export async function updateSettings(
          locale = COALESCE($9, tenant_settings.locale),
          allow_self_signup = COALESCE($10, tenant_settings.allow_self_signup),
          default_mentor_capacity = COALESCE($11, tenant_settings.default_mentor_capacity),
+         landing = COALESCE($12::jsonb, tenant_settings.landing),
          updated_at = now()
        RETURNING ${SELECT_ROW}`,
       [
@@ -180,6 +201,7 @@ export async function updateSettings(
         input.locale ?? null,
         input.allowSelfSignup ?? null,
         input.defaultMentorCapacity ?? null,
+        landingJson,
       ],
     );
     return toSettings(res.rows[0]);

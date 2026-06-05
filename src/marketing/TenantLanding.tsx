@@ -8,12 +8,19 @@ import { brandingStyle, type Branding } from '../ui/branding.js';
 import { FontLoader } from '../ui/FontLoader.js';
 import { BRAND_DEFAULTS } from '../settings/branding.js';
 import { buildTenantLanding } from './tenantLanding.js';
+import type { TenantLandingContent } from './landingContent.js';
 
-export function TenantLanding({ branding }: { branding: Branding }) {
+export function TenantLanding({
+  branding,
+  content,
+}: {
+  branding: Branding;
+  content?: TenantLandingContent | null;
+}) {
   const company = branding.displayName ?? null;
   const programName = branding.programName;
   const hasCustomProgram = Boolean(programName) && programName !== BRAND_DEFAULTS.programName;
-  const c = buildTenantLanding({ programName, companyName: company, hasCustomProgram });
+  const c = buildTenantLanding({ programName, companyName: company, hasCustomProgram, content });
   const title = company ?? programName;
 
   return (

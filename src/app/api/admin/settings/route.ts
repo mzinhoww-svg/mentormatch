@@ -1,6 +1,7 @@
 import { requireAdmin } from '../../../../admin/requireAdmin.js';
 import { json, respondError } from '../../../../auth/http.js';
 import { getSettings, updateSettings } from '../../../../settings/settingsService.js';
+import type { LandingContentInput } from '../../../../marketing/landingContent.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,11 @@ export async function POST(request: Request): Promise<Response> {
       allowSelfSignup: typeof body.allowSelfSignup === 'boolean' ? body.allowSelfSignup : undefined,
       defaultMentorCapacity:
         typeof body.defaultMentorCapacity === 'number' ? body.defaultMentorCapacity : undefined,
+      // Sanitized in the service (resolveLandingContent); accept the raw object.
+      landing:
+        body.landing !== undefined && body.landing !== null
+          ? (body.landing as LandingContentInput)
+          : undefined,
     });
     return json({ ok: true, settings });
   } catch (err) {
