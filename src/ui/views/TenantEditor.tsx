@@ -16,13 +16,31 @@ interface TenantSettings {
     primaryColor: string;
     secondaryColor: string;
     programName: string;
+    fontFamily: string | null;
+    borderRadius: string | null;
+    locale: string;
   };
+  status: string;
+  allowSelfSignup: boolean;
+  defaultMentorCapacity: number;
 }
 interface ParsedDesign {
   primaryColor?: string;
   secondaryColor?: string;
   programName?: string;
   displayName?: string;
+  fontFamily?: string;
+  borderRadius?: string;
+}
+
+interface Overview {
+  users: { active: number };
+  mentors: { active: number; available: number };
+  mentees: { active: number };
+  mentorships: { active: number };
+  sessions: { total: number };
+  capacity: { total: number; used: number; waitlisted: number };
+  participationRate: number;
 }
 
 const LOGO_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
@@ -45,17 +63,29 @@ export function TenantEditor({ tenantId, tenantName }: { tenantId: string; tenan
   }
   if (res.error || !res.data) return <Banner kind="error">{res.error ?? 'erro'}</Banner>;
 
-  const b = res.data.settings.branding;
+  const s = res.data.settings;
+  const b = s.branding;
   const val = (k: string, fallback: string) => form[k] ?? fallback;
   const currentLogo = logo !== undefined ? logo : b.logoUrl;
+  const selfSignup = form.allowSelfSignup !== undefined ? form.allowSelfSignup === 'true' : s.allowSelfSignup;
 
   async function save(e: FormEvent) {
     e.preventDefault();
     setMsg(null);
     setBusy(true);
     try {
-      await api.post('/api/platform/tenants/settings', { tenantId, ...form });
-      setMsg({ kind: 'ok', text: 'Marca salva.' });
+      // Only the fields the operator touched are sent (others keep their value).
+      const body: Record<string, unknown> = { tenantId };
+      for (const k of ['displayName', 'programName', 'primaryColor', 'secondaryColor', 'fontFamily', 'borderRadius', 'locale']) {
+        if (form[k] !== undefined) body[k] = form[k];
+      }
+      if (form.allowSelfSignup !== undefined) body.allowSelfSignup = form.allowSelfSignup === 'true';
+      if (form.defaultMentorCapacity !== undefined) {
+        const n = Number(form.defaultMentorCapacity);
+        if (Number.isFinite(n)) body.defaultMentorCapacity = Math.max(0, Math.round(n));
+      }
+      await api.post('/api/platform/tenants/settings', body);
+      setMsg({ kind: 'ok', text: 'Configurações salvas.' });
       setForm({});
       res.reload();
     } catch (err) {
@@ -114,6 +144,8 @@ export function TenantEditor({ tenantId, tenantName }: { tenantId: string; tenan
         ...(p.secondaryColor ? { secondaryColor: p.secondaryColor } : {}),
         ...(p.programName ? { programName: p.programName } : {}),
         ...(p.displayName ? { displayName: p.displayName } : {}),
+        ...(p.fontFamily ? { fontFamily: p.fontFamily } : {}),
+        ...(p.borderRadius ? { borderRadius: p.borderRadius } : {}),
       }));
       const found = Object.keys(p).length > 0;
       setMsg({
@@ -134,8 +166,10 @@ export function TenantEditor({ tenantId, tenantName }: { tenantId: string; tenan
       className="card"
       style={{ marginTop: 'var(--sp-3)', marginBottom: 'var(--sp-3)', background: 'var(--paper-2)' }}
     >
-      <div className="card-h">Personalizar — {tenantName}</div>
+      <div className="card-h">{tenantName} — painel</div>
       {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
+
+      <TenantStats tenantId={tenantId} />
 
       <div className="field">
         <label>Arquivo de design (preenche os campos)</label>
@@ -193,14 +227,77 @@ export function TenantEditor({ tenantId, tenantName }: { tenantId: string; tenan
             <input id={`sc-${tenantId}`} className="input" value={val('secondaryColor', b.secondaryColor)} onChange={(e) => setForm((f) => ({ ...f, secondaryColor: e.target.value }))} />
           </div>
         </div>
+        <div className="grid grid-2">
+          <div className="field">
+            <label htmlFor={`ff-${tenantId}`}>Fonte (Google Font)</label>
+            <input id={`ff-${tenantId}`} className="input" placeholder="Ex.: Poppins" value={val('fontFamily', b.fontFamily ?? '')} onChange={(e) => setForm((f) => ({ ...f, fontFamily: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label htmlFor={`br-${tenantId}`}>Border radius</label>
+            <input id={`br-${tenantId}`} className="input" placeholder="Ex.: 4px" value={val('borderRadius', b.borderRadius ?? '')} onChange={(e) => setForm((f) => ({ ...f, borderRadius: e.target.value }))} />
+          </div>
+        </div>
+        <div className="grid grid-2">
+          <div className="field">
+            <label htmlFor={`lc-${tenantId}`}>Idioma</label>
+            <select id={`lc-${tenantId}`} className="input" value={val('locale', b.locale)} onChange={(e) => setForm((f) => ({ ...f, locale: e.target.value }))}>
+              <option value="pt-BR">Português (BR)</option>
+              <option value="en-US">English (US)</option>
+              <option value="es-ES">Español (ES)</option>
+              <option value="es-419">Español (LatAm)</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor={`cap-${tenantId}`}>Capacidade padrão por mentor</label>
+            <input id={`cap-${tenantId}`} className="input" type="number" min={0} value={val('defaultMentorCapacity', String(s.defaultMentorCapacity))} onChange={(e) => setForm((f) => ({ ...f, defaultMentorCapacity: e.target.value }))} />
+          </div>
+        </div>
+        <label className="pref-row" style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', marginBottom: 'var(--sp-4)' }}>
+          <input type="checkbox" checked={selfSignup} onChange={(e) => setForm((f) => ({ ...f, allowSelfSignup: String(e.target.checked) }))} />
+          <span>Permitir auto‑cadastro de membros (página /signup)</span>
+        </label>
         <button className="btn btn-primary" type="submit" disabled={busy}>
-          {busy ? 'Salvando…' : 'Salvar marca'}
+          {busy ? 'Salvando…' : 'Salvar configurações'}
         </button>
       </form>
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: 'var(--sp-5) 0' }} />
       <TenantAdminForm tenantId={tenantId} />
       <ResendLinkForm tenantId={tenantId} />
+    </div>
+  );
+}
+
+/** Operational statistics for the tenant (read-only). Non-critical: hidden on error. */
+function TenantStats({ tenantId }: { tenantId: string }) {
+  const ov = useResource<{ overview: Overview }>(() =>
+    api.get(`/api/platform/tenants/overview?tenantId=${encodeURIComponent(tenantId)}`),
+  );
+  if (ov.loading) {
+    return (
+      <div style={{ padding: 'var(--sp-3) 0' }}>
+        <Loading />
+      </div>
+    );
+  }
+  if (ov.error || !ov.data) return null;
+  const o = ov.data.overview;
+  const Stat = ({ k, v }: { k: string; v: number | string }) => (
+    <div className="pstat">
+      <div className="pstat-v">{v}</div>
+      <div className="pstat-k">{k}</div>
+    </div>
+  );
+  return (
+    <div className="pstats">
+      <Stat k="Usuários" v={o.users.active} />
+      <Stat k="Mentores" v={o.mentors.active} />
+      <Stat k="Mentorados" v={o.mentees.active} />
+      <Stat k="Mentorias" v={o.mentorships.active} />
+      <Stat k="Sessões" v={o.sessions.total} />
+      <Stat k="Participação" v={`${Math.round(o.participationRate * 100)}%`} />
+      <Stat k="Capacidade" v={`${o.capacity.used}/${o.capacity.total}`} />
+      <Stat k="Na fila" v={o.capacity.waitlisted} />
     </div>
   );
 }
