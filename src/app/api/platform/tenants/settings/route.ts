@@ -36,6 +36,12 @@ export async function POST(request: Request): Promise<Response> {
       primaryColor: str(body.primaryColor),
       secondaryColor: str(body.secondaryColor),
       programName: str(body.programName),
+      fontFamily: str(body.fontFamily),
+      borderRadius: str(body.borderRadius),
+      locale: typeof body.locale === 'string' ? body.locale : undefined,
+      allowSelfSignup: typeof body.allowSelfSignup === 'boolean' ? body.allowSelfSignup : undefined,
+      defaultMentorCapacity:
+        typeof body.defaultMentorCapacity === 'number' ? body.defaultMentorCapacity : undefined,
     });
     await recordPlatformEvent(tenantId, 'platform.tenant_branding_changed', { adminId: admin.id });
     return json({ ok: true, settings });
