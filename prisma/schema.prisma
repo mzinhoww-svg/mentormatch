@@ -160,6 +160,8 @@ model Profile {
   mentorAvailable Boolean  @default(false) @map("mentor_available")
   mentorPaused    Boolean  @default(false) @map("mentor_paused")
   mentorCapacity  Int      @default(3) @map("mentor_capacity")
+  languages       String[] @default([]) @map("languages")
+  onboardedAt     DateTime? @map("onboarded_at") @db.Timestamptz(6)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

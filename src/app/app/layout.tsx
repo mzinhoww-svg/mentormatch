@@ -24,19 +24,29 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect('/login');
   }
 
-  // Independent reads — fetch the branding and the user's display name
-  // concurrently (the tenant resolution inside getServerBranding is already
+  // Independent reads — fetch the branding and the user's identity + onboarding
+  // state concurrently (the tenant resolution inside getServerBranding is already
   // cached by the requireSession call above, so this is a clean overlap).
-  const [branding, displayName] = await Promise.all([
+  const [branding, userRow] = await Promise.all([
     getServerBranding(host),
     withTenant(session.tenantId, async (db) => {
-      const r = await db.query<{ display_name: string | null; email: string }>(
-        'SELECT display_name, email FROM tenant_user WHERE id = $1',
+      const r = await db.query<{ display_name: string | null; email: string; onboarded_at: Date | null }>(
+        `SELECT u.display_name, u.email, p.onboarded_at
+           FROM tenant_user u LEFT JOIN profile p ON p.tenant_user_id = u.id
+          WHERE u.id = $1`,
         [session.userId],
       );
-      return r.rows[0]?.display_name ?? r.rows[0]?.email ?? 'Usuário';
+      return r.rows[0] ?? null;
     }),
   ]);
+
+  // First login: route the collaborator through the full-screen onboarding
+  // wizard before they reach the app. onboarded_at is stamped on completion.
+  if (!userRow?.onboarded_at) {
+    redirect('/onboarding');
+  }
+
+  const displayName = userRow.display_name ?? userRow.email ?? 'Usuário';
 
   return (
     <AppShell role={session.role} displayName={displayName} branding={branding}>

@@ -368,6 +368,10 @@ a.card:hover .stat-go { gap: 8px; }
 .pf-toggle { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--paper-2); }
 .pf-toggle .lab { font-size: 14px; font-weight: 600; }
 .pf-toggle .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pf-complete-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.pf-complete-head .muted { font-size: 13px; }
+.pf-complete-bar { height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
+.pf-complete-bar > span { display: block; height: 100%; background: var(--brand-primary); border-radius: var(--r-pill); transition: width .4s var(--ease-out, ease); }
 .pf-switch { margin-left: auto; position: relative; width: 42px; height: 24px; flex-shrink: 0; }
 .pf-switch input { opacity: 0; width: 0; height: 0; }
 .pf-switch .track { position: absolute; inset: 0; background: var(--line-strong); border-radius: var(--r-pill); transition: background var(--dur-1); cursor: pointer; }

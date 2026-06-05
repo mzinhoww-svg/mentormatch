@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api.js';
 import { Loading, Banner, useResource, errorMessage, initials } from '../components.js';
+import { profileCompleteness } from '../../profile/completeness.js';
 
 interface Skill {
   id: string;
@@ -28,6 +29,7 @@ interface ProfilePayload {
     status: 'active' | 'inactive';
     mentorAvailable: boolean;
     mentorPaused: boolean;
+    languages: string[];
   } | null;
   contact: Contact;
   skills: { offered: Skill[]; sought: Skill[]; interest: Skill[] };
@@ -127,10 +129,35 @@ export function ProfileView({ displayName }: { displayName?: string }) {
     reload();
   }
 
+  const completeness = profileCompleteness({
+    avatarUrl: p?.avatarUrl ?? null,
+    title: p?.title ?? null,
+    bio: p?.bio ?? null,
+    linkedinUrl: p?.linkedinUrl ?? null,
+    languages: p?.languages ?? [],
+    contactWhatsapp: data.contact.contactWhatsapp,
+    skillCount: data.skills.offered.length + data.skills.sought.length,
+    hasIntention: (p?.mentorAvailable ?? false) || data.skills.sought.length > 0,
+  });
+
   return (
     <div>
       <h1 className="page-title">Perfil</h1>
       {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
+
+      {/* Completeness */}
+      {completeness.percent < 100 ? (
+        <div className="card pf-complete" style={{ marginTop: 'var(--sp-5)' }}>
+          <div className="pf-complete-head">
+            <b>Perfil {completeness.percent}% completo</b>
+            <span className="muted">Perfis completos recebem mais conexões.</span>
+          </div>
+          <div className="pf-complete-bar"><span style={{ width: `${completeness.percent}%` }} /></div>
+          <p className="muted" style={{ fontSize: 13, margin: '8px 0 0' }}>
+            Falta: {completeness.missing.map((m) => m.label.toLowerCase()).join(' · ')}.
+          </p>
+        </div>
+      ) : null}
 
       {/* Avatar */}
       <div className="card" style={{ marginTop: 'var(--sp-5)' }}>

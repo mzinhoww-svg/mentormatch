@@ -23,6 +23,8 @@ export interface ProfileRecord {
   status: 'active' | 'inactive';
   mentorAvailable: boolean;
   mentorPaused: boolean;
+  languages: string[];
+  onboardedAt: string | null;
 }
 
 export interface ProfileInput {
@@ -42,13 +44,16 @@ const SELECT_PROFILE = `
          linkedin_url     AS "linkedinUrl",
          status,
          mentor_available AS "mentorAvailable",
-         mentor_paused    AS "mentorPaused"
+         mentor_paused    AS "mentorPaused",
+         languages,
+         onboarded_at     AS "onboardedAt"
   FROM profile WHERE tenant_user_id = $1`;
 
 const RETURNING_PROFILE = `
   RETURNING id, tenant_user_id AS "tenantUserId", bio, title, area, seniority,
             avatar_url AS "avatarUrl", linkedin_url AS "linkedinUrl", status,
-            mentor_available AS "mentorAvailable", mentor_paused AS "mentorPaused"`;
+            mentor_available AS "mentorAvailable", mentor_paused AS "mentorPaused",
+            languages, onboarded_at AS "onboardedAt"`;
 
 export async function getProfile(tenantId: string, userId: string): Promise<ProfileRecord | null> {
   return withTenant(tenantId, async (db) => {
