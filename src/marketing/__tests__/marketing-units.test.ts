@@ -4,7 +4,10 @@ import { PLANS, HOW_IT_WORKS, HR_BENEFITS, HEADCOUNT_OPTIONS } from '../content.
 import { siteUrl, MARKETING_ROUTES } from '../seo.js';
 import robots from '../../app/robots.js';
 import sitemap from '../../app/sitemap.js';
-import { metadata as homeMeta } from '../../app/(marketing)/page.js';
+// The home page is host-aware (generateMetadata), so its institutional SEO lives
+// in its own module — that is exactly what generateMetadata returns on a
+// non-tenant host.
+import { INSTITUTIONAL_METADATA as homeMeta } from '../homeMetadata.js';
 import { metadata as comoMeta } from '../../app/(marketing)/como-funciona/page.js';
 import { metadata as planosMeta } from '../../app/(marketing)/planos/page.js';
 import { metadata as demoMeta } from '../../app/(marketing)/demo/page.js';
