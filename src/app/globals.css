@@ -260,6 +260,43 @@ a.card:hover .stat-v { color: var(--brand-primary); }
 .home-hero h1 .accent { color: var(--brasa-400); font-style: italic; }
 .home-hero p { color: var(--argila-300); max-width: 52ch; margin: 16px 0 0; }
 
+/* =====================================================================
+   Personal dashboard (Início)
+   ===================================================================== */
+.dash-next {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  margin-bottom: var(--sp-4); padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--r-lg); text-decoration: none; color: var(--ink);
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--brand-primary) 14%, transparent), transparent 60%),
+    color-mix(in srgb, var(--brand-primary) 7%, #fff);
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 22%, var(--line));
+  transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1), border-color var(--dur-1);
+}
+.dash-next:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: color-mix(in srgb, var(--brand-primary) 40%, var(--line)); }
+.dash-next-body { min-width: 0; }
+.dash-next-title { font-family: var(--serif); font-size: clamp(20px, 2.4vw, 26px); line-height: 1.1; margin: 6px 0 4px; color: var(--ink); }
+.dash-next p { color: var(--ink-2); font-size: 14.5px; margin: 0; max-width: 52ch; }
+.dash-next .btn { flex-shrink: 0; pointer-events: none; }
+
+.dash-complete { display: block; text-decoration: none; color: inherit; margin-top: var(--sp-4); }
+.dash-complete-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.dash-complete-bar { height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
+.dash-complete-bar > span { display: block; height: 100%; background: var(--brand-primary); border-radius: var(--r-pill); transition: width .4s var(--ease-out); }
+
+.dash-stat .stat-v { margin-top: 10px; }
+
+.dash-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: var(--sp-4); }
+.dash-sec-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(22px, 3vw, 28px); letter-spacing: -0.01em; margin: 0; }
+
+.rec-card { display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1), border-color var(--dur-1); }
+.rec-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-strong); }
+.rec-card .av { width: 46px; height: 46px; font-size: 16px; }
+.rec-body { min-width: 0; }
+.rec-name { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-title { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+
 /* misc */
 .unread-dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--brand-primary); flex-shrink: 0; }
 .count-pill { background: var(--brand-primary); color: var(--accent-ink); border-radius: var(--r-pill); font-size: 11px; font-weight: 700; padding: 2px 9px; }
