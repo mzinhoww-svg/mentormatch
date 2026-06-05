@@ -27,11 +27,20 @@ export async function POST(request: Request): Promise<Response> {
     if (!file || typeof file === 'string') throw expectedError(ErrorCode.VALIDATION, 'no_file');
     const ext = validateLogoUpload({ type: file.type, size: file.size });
     const key = `tenants/${tenantId}/logo-${Date.now()}.${ext}`;
-    const blob = await put(key, file, {
-      access: 'public',
-      contentType: file.type,
-      addRandomSuffix: true,
-    });
+    let blob;
+    try {
+      blob = await put(key, file, {
+        access: 'public',
+        contentType: file.type,
+        addRandomSuffix: true,
+      });
+    } catch (e) {
+      // Surface the real Vercel Blob failure (redacted) instead of a generic 500.
+      throw expectedError(
+        ErrorCode.DEPENDENCY,
+        `blob_upload_failed: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`,
+      );
+    }
     const settings = await setTenantLogo(tenantId, admin.id, blob.url);
     await recordPlatformEvent(tenantId, 'platform.tenant_logo_changed', { adminId: admin.id });
     return json({ ok: true, url: blob.url, settings });

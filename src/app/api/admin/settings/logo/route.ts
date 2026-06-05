@@ -28,11 +28,19 @@ export async function POST(request: Request): Promise<Response> {
     }
     const ext = validateLogoUpload({ type: file.type, size: file.size });
     const key = `tenants/${s.tenantId}/logo-${Date.now()}.${ext}`;
-    const blob = await put(key, file, {
-      access: 'public',
-      contentType: file.type,
-      addRandomSuffix: true,
-    });
+    let blob;
+    try {
+      blob = await put(key, file, {
+        access: 'public',
+        contentType: file.type,
+        addRandomSuffix: true,
+      });
+    } catch (e) {
+      throw expectedError(
+        ErrorCode.DEPENDENCY,
+        `blob_upload_failed: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`,
+      );
+    }
     const settings = await setTenantLogo(s.tenantId, s.userId, blob.url);
     return json({ ok: true, url: blob.url, settings });
   } catch (err) {
