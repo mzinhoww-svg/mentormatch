@@ -16,6 +16,10 @@ import { logger } from '../observability/logger.js';
 import { getBaseDomain } from '../tenancy/resolveTenant.js';
 import { renderTemplate, EMAILABLE_TYPES, type TemplateContext } from './templates.js';
 import { getEmailProvider, type EmailProvider } from './provider.js';
+import { renderBrandedEmail } from './emailLayout.js';
+import { emailBrandFromBranding } from './emailBrand.js';
+import { getSettings } from '../settings/settingsService.js';
+import { notificationLabel } from '../notifications/labels.js';
 
 const MAX_ATTEMPTS = 3;
 const DEFAULT_BATCH = 100;
@@ -120,15 +124,29 @@ export async function sendPendingEmails(
     return res.rows;
   });
 
+  // Tenant brand for the HTML wrapper (fetched once per batch).
+  const brand = batch.length
+    ? emailBrandFromBranding((await getSettings(tenantId)).branding, (await tenantContext(tenantId)).tenantName)
+    : null;
+
   let sent = 0;
   let failed = 0;
   for (const m of batch) {
     let result;
     try {
+      const html = brand
+        ? renderBrandedEmail({
+            brand,
+            heading: notificationLabel(m.origin_event),
+            paragraphs: m.body.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean),
+            footerNote: 'Para escolher quais avisos recebe por e-mail, acesse Configurações no app.',
+          }).html
+        : undefined;
       result = await provider.send({
         to: m.recipient,
         subject: m.subject,
         body: m.body,
+        html,
         templateKey: m.template_key,
         tenantId,
         originEvent: m.origin_event,

@@ -12,6 +12,7 @@ import { expectedError } from '../observability/errors.js';
 import { ErrorCode } from '../observability/error-codes.js';
 import { logger } from '../observability/logger.js';
 import { assertNoSensitive } from './sanitize.js';
+import { processTenantEmails } from '../email/emailService.js';
 import {
   type NotificationRecord,
   type NotificationStatus,
@@ -31,10 +32,15 @@ export interface EmitInput {
 }
 
 /**
- * Emits a notification for a domain event. Returns the row, or null when the
- * target user has muted this type (in_app = false). Throws on a sensitive
+ * Emits a notification for a domain event. Returns the in-app row, or null when
+ * the target user has muted this type (in_app = false). Throws on a sensitive
  * payload (defensive). Use safeNotify from domain services so a notification
- * failure can never break the core operation.
+ * failure can never break the core operation — and so the email is delivered.
+ *
+ * Email channel defaults ON: unless the user opted OUT for this type, the row is
+ * marked email_status='pending', which the outbox (emailService) turns into a
+ * branded email. emitNotification only RECORDS the intent; safeNotify drives the
+ * synchronous delivery.
  */
 export async function emitNotification(
   tenantId: string,
@@ -50,7 +56,8 @@ export async function emitNotification(
     );
     const p = pref.rows[0];
     if (p && !p.in_app) return null; // user muted this type
-    const emailStatus = p?.email ? 'pending' : 'none';
+    // Email defaults ON; an explicit preference row can turn it off.
+    const emailStatus = (p ? p.email : true) ? 'pending' : 'none';
 
     const res = await db.query<NotificationRecord>(
       `INSERT INTO notification
@@ -63,13 +70,27 @@ export async function emitNotification(
   });
 }
 
-/** Best-effort emit: logs and swallows errors so core flows never break. */
+/**
+ * Best-effort emit used by domain services: records the notification AND drains
+ * the tenant's email outbox synchronously (the cron that did this was removed on
+ * Hobby). Both steps are swallowed so a notification/email failure can never
+ * break the core operation.
+ */
 export async function safeNotify(tenantId: string, input: EmitInput): Promise<void> {
   try {
     await emitNotification(tenantId, input);
   } catch (err) {
     logger.warn('notification emit failed', {
       type: input.type,
+      tenantId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return;
+  }
+  try {
+    await processTenantEmails(tenantId);
+  } catch (err) {
+    logger.warn('notification email drain failed', {
       tenantId,
       error: err instanceof Error ? err.message : String(err),
     });
@@ -171,7 +192,7 @@ export async function setPreference(
   await withTenant(tenantId, (db) =>
     db.query(
       `INSERT INTO notification_preference (tenant_id, tenant_user_id, type, in_app, email)
-       VALUES ($1, $2, $3, COALESCE($4, true), COALESCE($5, false))
+       VALUES ($1, $2, $3, COALESCE($4, true), COALESCE($5, true))
        ON CONFLICT (tenant_id, tenant_user_id, type) DO UPDATE
          SET in_app = COALESCE($4, notification_preference.in_app),
              email  = COALESCE($5, notification_preference.email),
