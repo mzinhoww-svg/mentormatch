@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { resolveActiveTenant } from '../../tenancy/admin.js';
-import { getPublicBranding } from '../../settings/settingsService.js';
+import { getPublicBranding, getPublicLanding } from '../../settings/settingsService.js';
 import { MentorMatchHome } from '../../marketing/MentorMatchHome.js';
 import { TenantLanding } from '../../marketing/TenantLanding.js';
 import { INSTITUTIONAL_METADATA } from '../../marketing/homeMetadata.js';
@@ -39,10 +39,16 @@ export default async function HomePage() {
   const resolution = await resolveActiveTenant(host);
   if (resolution.kind !== 'TENANT') return <MentorMatchHome />;
 
-  const branding = await getPublicBranding(resolution.tenant.id);
+  const [branding, landing] = await Promise.all([
+    getPublicBranding(resolution.tenant.id),
+    getPublicLanding(resolution.tenant.id),
+  ]);
   // Always carry a company name for the copy: fall back to the registry tenant
   // name when the admin hasn't set a branding display name.
   return (
-    <TenantLanding branding={{ ...branding, displayName: branding.displayName ?? resolution.tenant.name }} />
+    <TenantLanding
+      branding={{ ...branding, displayName: branding.displayName ?? resolution.tenant.name }}
+      content={landing}
+    />
   );
 }

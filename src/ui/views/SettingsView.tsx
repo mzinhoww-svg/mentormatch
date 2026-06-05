@@ -59,10 +59,143 @@ export function SettingsView() {
       {isAdminRole(me.data?.role) ? (
         <>
           <BrandingSettings />
+          <LandingSettings />
           <CustomDomains />
         </>
       ) : null}
     </div>
+  );
+}
+
+/* ------------------------------------------------ Landing (employee page) */
+
+interface LandingTestimonial { quote: string; author: string; role: string }
+interface LandingContent {
+  niche: string | null;
+  transformation: string | null;
+  methodology: string | null;
+  audience: string | null;
+  testimonials: LandingTestimonial[];
+}
+interface SettingsWithLanding {
+  settings: { landing: LandingContent };
+}
+
+const MAX_TESTIMONIALS = 4;
+
+function LandingSettings() {
+  const { data, loading, error } = useResource<SettingsWithLanding>(() => api.get('/api/admin/settings'));
+  if (loading) return <Loading />;
+  if (error || !data) return <Banner kind="error">{error ?? 'erro'}</Banner>;
+  return <LandingForm initial={data.settings.landing} />;
+}
+
+function LandingForm({ initial }: { initial: LandingContent }) {
+  const [niche, setNiche] = useState(initial.niche ?? '');
+  const [transformation, setTransformation] = useState(initial.transformation ?? '');
+  const [methodology, setMethodology] = useState(initial.methodology ?? '');
+  const [audience, setAudience] = useState(initial.audience ?? '');
+  const [items, setItems] = useState<(LandingTestimonial & { key: number })[]>(
+    initial.testimonials.map((t, i) => ({ ...t, key: i })),
+  );
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function setItem(key: number, patch: Partial<LandingTestimonial>) {
+    setItems((list) => list.map((t) => (t.key === key ? { ...t, ...patch } : t)));
+  }
+  function addItem() {
+    setItems((list) =>
+      list.length >= MAX_TESTIMONIALS ? list : [...list, { quote: '', author: '', role: '', key: Date.now() }],
+    );
+  }
+  function removeItem(key: number) {
+    setItems((list) => list.filter((t) => t.key !== key));
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    setBusy(true);
+    try {
+      await api.post('/api/admin/settings', {
+        landing: {
+          niche,
+          transformation,
+          methodology,
+          audience,
+          testimonials: items
+            .filter((t) => t.quote.trim())
+            .map((t) => ({ quote: t.quote, author: t.author, role: t.role })),
+        },
+      });
+      setMsg({ kind: 'ok', text: 'Página do colaborador salva.' });
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="card" style={{ marginTop: 'var(--sp-4)' }} onSubmit={save}>
+      <div className="card-h">Página do colaborador (landing)</div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 'var(--sp-4)' }}>
+        Personalize a página que o colaborador vê ao acessar o programa. Campos em branco usam um
+        texto padrão.
+      </p>
+      {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
+
+      <div className="field">
+        <label htmlFor="lc-niche">Nicho / foco do programa</label>
+        <input id="lc-niche" className="input" placeholder="Ex.: liderança técnica e gestão de times" value={niche} onChange={(e) => setNiche(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor="lc-transformation">A grande transformação</label>
+        <textarea id="lc-transformation" className="textarea" maxLength={600} placeholder="O que o colaborador alcança ao participar?" value={transformation} onChange={(e) => setTransformation(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor="lc-method">Como funciona (método)</label>
+        <textarea id="lc-method" className="textarea" maxLength={600} placeholder="Resumo do método, focado na facilidade de uso e acesso." value={methodology} onChange={(e) => setMethodology(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor="lc-audience">Público-alvo interno</label>
+        <input id="lc-audience" className="input" placeholder="Ex.: novos líderes e quem busca a próxima promoção" value={audience} onChange={(e) => setAudience(e.target.value)} />
+      </div>
+
+      <div className="card-h" style={{ marginTop: 'var(--sp-5)' }}>Depoimentos reais</div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+        Substituem os exemplos genéricos. Até {MAX_TESTIMONIALS}.
+      </p>
+      {items.map((t) => (
+        <div key={t.key} className="card" style={{ background: 'var(--paper-2)', marginBottom: 'var(--sp-3)' }}>
+          <div className="field">
+            <label htmlFor={`lc-q-${t.key}`}>Depoimento</label>
+            <textarea id={`lc-q-${t.key}`} className="textarea" maxLength={400} value={t.quote} onChange={(e) => setItem(t.key, { quote: e.target.value })} />
+          </div>
+          <div className="grid grid-2">
+            <div className="field">
+              <label htmlFor={`lc-a-${t.key}`}>Autor(a)</label>
+              <input id={`lc-a-${t.key}`} className="input" placeholder="Ex.: Mariana L." value={t.author} onChange={(e) => setItem(t.key, { author: e.target.value })} />
+            </div>
+            <div className="field">
+              <label htmlFor={`lc-r-${t.key}`}>Cargo / área</label>
+              <input id={`lc-r-${t.key}`} className="input" placeholder="Ex.: Líder de Squad" value={t.role} onChange={(e) => setItem(t.key, { role: e.target.value })} />
+            </div>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeItem(t.key)}>Remover</button>
+        </div>
+      ))}
+      {items.length < MAX_TESTIMONIALS ? (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>+ Adicionar depoimento</button>
+      ) : null}
+
+      <div>
+        <button className="btn btn-primary" type="submit" style={{ marginTop: 'var(--sp-4)' }} disabled={busy}>
+          {busy ? 'Salvando…' : 'Salvar página do colaborador'}
+        </button>
+      </div>
+    </form>
   );
 }
 

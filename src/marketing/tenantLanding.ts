@@ -6,11 +6,13 @@
  * on the benefit the company offers, an exclusive free perk, an invitation to a
  * development journey, and a login-focused CTA.
  *
- * When the tenant has no custom program name (still the MentorMatch default), the
- * copy leans on generic program characteristics (skills you can develop, how it
- * works) so it reads well out of the box. Richer per-tenant content (niche,
- * transformation, …) can be layered later — see docs/LANDING-PROMPT.md.
+ * When the tenant provides per-tenant content (niche, transformation, method,
+ * audience, real testimonials — see landingContent.ts and docs/LANDING-PROMPT.md)
+ * the copy is tailored to it. Anything absent falls back to the generic copy
+ * (skills you can develop, how it works), so the landing always reads well.
  */
+import type { TenantLandingContent } from './landingContent.js';
+
 export interface TenantLandingInput {
   /** The tenant's program name (e.g. "Trilhas de Liderança"); may be the default. */
   programName: string;
@@ -18,6 +20,8 @@ export interface TenantLandingInput {
   companyName: string | null;
   /** True when programName is a real custom name (not the kit default). */
   hasCustomProgram: boolean;
+  /** Optional per-tenant copy. Blank/absent fields use the generic fallback. */
+  content?: TenantLandingContent | null;
 }
 
 export interface LandingStep {
@@ -51,17 +55,38 @@ const DEFAULT_SKILLS: readonly string[] = [
   'Tomada de decisão sob pressão',
 ];
 
+/** Reads as a sentence: capitalized first letter and a closing period. */
+function sentence(raw: string): string {
+  const t = raw.trim();
+  if (!t) return t;
+  const cap = t.charAt(0).toUpperCase() + t.slice(1);
+  return /[.!?…]$/.test(cap) ? cap : `${cap}.`;
+}
+
 export function buildTenantLanding(input: TenantLandingInput): TenantLandingCopy {
   const company = input.companyName?.trim() || 'sua empresa';
   const program = input.programName?.trim() || 'Programa de Mentoria';
   // Phrase the program naturally: a real custom name is referenced by name; the
   // default falls back to a descriptive phrase.
   const programRef = input.hasCustomProgram ? program : 'o programa de mentoria';
+  const c = input.content ?? null;
+  const niche = c?.niche?.trim() || null;
+  const transformation = c?.transformation?.trim() || null;
+  const methodology = c?.methodology?.trim() || null;
+  const audience = c?.audience?.trim() || null;
+
+  // Hero sub-headline: the free company benefit, then a tailored hook — the
+  // transformation if given, else the program/generic teaser.
+  const heroHook = transformation
+    ? sentence(transformation)
+    : input.hasCustomProgram
+      ? `Conheça ${program} por dentro.`
+      : 'Descubra o que você pode desenvolver.';
 
   return {
     hero: {
       headline: `A ${company} investe no seu futuro. Sua mentoria exclusiva já está liberada.`,
-      subheadline: `Um benefício preparado pela ${company} para acelerar a sua carreira: conexão direta com mentores experientes, no seu tempo e sem nenhum custo para você. ${input.hasCustomProgram ? `Conheça ${program} por dentro.` : 'Descubra o que você pode desenvolver.'}`,
+      subheadline: `Um benefício preparado pela ${company} para acelerar a sua carreira: conexão direta com mentores experientes, no seu tempo e sem nenhum custo para você. ${heroHook}`,
       cta: 'Acessar meu programa',
       visualHint:
         'Fundo claro com a cor primária da marca; logo da empresa em destaque; pessoas reais colaborando/aprendendo, ou o símbolo da marca em grande. Botão de acesso bem visível.',
@@ -69,14 +94,17 @@ export function buildTenantLanding(input: TenantLandingInput): TenantLandingCopy
     nextLevel: {
       title: 'Existe um próximo nível esperando por você',
       paragraphs: [
-        `Onde você quer estar daqui a um ano? Há conversas, repertório e decisões que separam o seu momento atual do seu próximo passo — e raramente aprendemos isso sozinhos.`,
-        `A ${company} decidiu encurtar esse caminho para você: colocou à sua disposição quem já trilhou essa estrada. As ferramentas estão na mesa. A evolução é uma escolha sua — e ela já está custeada.`,
+        `Onde você quer estar daqui a um ano${niche ? `, especialmente em ${niche}` : ''}? Há conversas, repertório e decisões que separam o seu momento atual do seu próximo passo — e raramente aprendemos isso sozinhos.`,
+        transformation
+          ? `A ${company} decidiu encurtar esse caminho para você: ${sentence(transformation)} As ferramentas estão na mesa — e já estão custeadas.`
+          : `A ${company} decidiu encurtar esse caminho para você: colocou à sua disposição quem já trilhou essa estrada. As ferramentas estão na mesa. A evolução é uma escolha sua — e ela já está custeada.`,
       ],
     },
     experience: {
       title: 'Como funciona, por dentro',
-      intro:
-        'Nada de cursos intermináveis. É uma jornada guiada, no seu ritmo, com pessoas de verdade ao seu lado.',
+      intro: methodology
+        ? sentence(methodology)
+        : 'Nada de cursos intermináveis. É uma jornada guiada, no seu ritmo, com pessoas de verdade ao seu lado.',
       steps: [
         { title: 'Encontre o mentor certo', text: 'Busque por área, habilidade ou objetivo e veja quem pode te ajudar agora.' },
         { title: 'Solicite a conexão', text: 'Em um clique você pede a mentoria. Simples, direto, sem burocracia.' },
@@ -86,32 +114,39 @@ export function buildTenantLanding(input: TenantLandingInput): TenantLandingCopy
     },
     skills: {
       title: 'O que você pode desenvolver',
-      intro: input.hasCustomProgram
-        ? `Dentro de ${program}, você avança nas competências que destravam a sua carreira:`
-        : 'Escolha onde quer crescer — e encontre quem já domina esse caminho:',
+      intro: niche
+        ? `Com foco em ${niche}, você avança nas competências que destravam a sua carreira:`
+        : input.hasCustomProgram
+          ? `Dentro de ${program}, você avança nas competências que destravam a sua carreira:`
+          : 'Escolha onde quer crescer — e encontre quem já domina esse caminho:',
       items: [...DEFAULT_SKILLS],
     },
     community: {
       title: 'Você não cresce sozinho',
       paragraphs: [
-        `Mais do que acessar conteúdo, você entra para um movimento de pessoas que escolheram evoluir dentro da ${company}.`,
+        audience
+          ? `Pensado para ${audience}, este é mais do que um benefício: é um movimento de pessoas que escolheram evoluir dentro da ${company}.`
+          : `Mais do que acessar conteúdo, você entra para um movimento de pessoas que escolheram evoluir dentro da ${company}.`,
         `Troque experiências, amplie sua rede por dentro da empresa e descubra que aprender com colegas e líderes é o atalho mais poderoso para o crescimento coletivo.`,
       ],
     },
     stories: {
       title: 'Quem já está aproveitando',
-      items: [
-        {
-          quote: `Achei que seria mais um benefício esquecido. Na primeira sessão entendi o tamanho da oportunidade — em semanas mudei a forma como conduzo meu time.`,
-          author: 'Colaborador(a)',
-          role: `${company}`,
-        },
-        {
-          quote: `Ter alguém experiente para me ouvir e provocar fez toda a diferença. ${programRef.charAt(0).toUpperCase() + programRef.slice(1)} me deu clareza sobre os meus próximos passos.`,
-          author: 'Colaborador(a)',
-          role: `${company}`,
-        },
-      ],
+      items:
+        c && c.testimonials.length > 0
+          ? c.testimonials.map((t) => ({ quote: t.quote, author: t.author, role: t.role || company }))
+          : [
+              {
+                quote: `Achei que seria mais um benefício esquecido. Na primeira sessão entendi o tamanho da oportunidade — em semanas mudei a forma como conduzo meu time.`,
+                author: 'Colaborador(a)',
+                role: `${company}`,
+              },
+              {
+                quote: `Ter alguém experiente para me ouvir e provocar fez toda a diferença. ${programRef.charAt(0).toUpperCase() + programRef.slice(1)} me deu clareza sobre os meus próximos passos.`,
+                author: 'Colaborador(a)',
+                role: `${company}`,
+              },
+            ],
     },
     finalCta: {
       title: 'Seu crescimento começa agora',
