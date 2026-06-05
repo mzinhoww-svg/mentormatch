@@ -10,6 +10,7 @@ interface MentorItem {
   area: string | null;
   seniority: string | null;
   bio: string | null;
+  avatarUrl: string | null;
   offeredSkills: string[];
   available: boolean;
 }
@@ -141,7 +142,13 @@ export function MentorsView() {
                 >
                   <div className="mentor-card-head">
                     <span className="av-wrap">
-                      <span className="av">{initials(m.displayName)}</span>
+                      <span className="av">
+                        {m.avatarUrl ? (
+                          <img src={m.avatarUrl} alt={m.displayName ?? 'Mentor'} />
+                        ) : (
+                          initials(m.displayName)
+                        )}
+                      </span>
                       <span className={`av-dot ${m.available ? 'on' : 'off'}`} aria-hidden />
                     </span>
                     <div style={{ minWidth: 0 }}>
