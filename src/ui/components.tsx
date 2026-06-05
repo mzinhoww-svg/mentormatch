@@ -95,12 +95,51 @@ export function StarRating({
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  action?: { label: string; href: string };
+}) {
   return (
     <div className="empty">
-      <span className="eyebrow">Nada por aqui ainda</span>
-      <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>{title}</div>
-      {hint ? <p style={{ marginTop: 8 }}>{hint}</p> : null}
+      <span className="empty-mark" aria-hidden>
+        <Mark size={38} ink="var(--line-strong)" accent="var(--brand-primary)" decorative />
+      </span>
+      <div className="empty-title">{title}</div>
+      {hint ? <p>{hint}</p> : null}
+      {action ? (
+        <a className="btn btn-primary btn-sm" href={action.href} style={{ marginTop: 'var(--sp-2)' }}>
+          {action.label}
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+/** Consistent page header (eyebrow + title + subtitle, optional right actions). */
+export function PageHeader({
+  title,
+  subtitle,
+  eyebrow,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  eyebrow?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="page-head">
+      <div className="page-head-main">
+        {eyebrow ? <span className="eyebrow">{eyebrow}</span> : null}
+        <h1 className="page-title">{title}</h1>
+        {subtitle ? <p className="page-sub">{subtitle}</p> : null}
+      </div>
+      {actions ? <div className="page-head-actions">{actions}</div> : null}
     </div>
   );
 }

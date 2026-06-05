@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Loading, EmptyState, Banner, StatusTag, useResource, errorMessage, initials } from '../components.js';
+import { Loading, EmptyState, Banner, StatusTag, PageHeader, useResource, errorMessage, initials } from '../components.js';
 
 interface Mentorship {
   id: string;
@@ -77,10 +77,10 @@ export function MentorshipsView({ currentUserId }: { currentUserId: string }) {
 
   return (
     <div>
-      <h1 className="page-title">Mentorias</h1>
+      <PageHeader title="Mentorias" subtitle="Suas relações de mentoria, ativas e encerradas." />
       {data.mentorships.length === 0 ? (
         <div style={{ marginTop: 'var(--sp-5)' }}>
-          <EmptyState title="Nenhuma mentoria ativa" hint="Aceite ou solicite uma mentoria para começar." />
+          <EmptyState title="Nenhuma mentoria ativa" hint="Aceite ou solicite uma mentoria para começar." action={{ label: 'Encontrar um mentor', href: '/app/mentors' }} />
         </div>
       ) : (
         <div style={{ marginTop: 'var(--sp-5)' }}>

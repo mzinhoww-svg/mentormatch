@@ -1,7 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { SkeletonGrid, EmptyState, Banner, StatusTag, ConfirmDialog, useResource, errorMessage } from '../components.js';
+import { SkeletonGrid, EmptyState, Banner, StatusTag, ConfirmDialog, PageHeader, useResource, errorMessage } from '../components.js';
 
 interface Overview {
   users: { active: number };
@@ -147,7 +147,7 @@ export function AdminView() {
 
   return (
     <div>
-      <h1 className="page-title">Administração</h1>
+      <PageHeader title="Administração" subtitle="Gerencie membros e acompanhe o programa." />
 
       <section style={{ marginTop: 'var(--sp-5)' }}>
         <div className="eyebrow" style={{ marginBottom: 'var(--sp-3)' }}>Visão operacional</div>

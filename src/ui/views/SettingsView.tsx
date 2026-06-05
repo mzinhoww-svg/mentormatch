@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { Loading, Banner, useResource, errorMessage } from '../components.js';
+import { Loading, Banner, PageHeader, useResource, errorMessage } from '../components.js';
 import { isAdminRole } from '../nav.js';
 import { CustomDomains } from './CustomDomains.js';
 import { notificationLabel } from '../../notifications/labels.js';
@@ -28,7 +28,7 @@ export function SettingsView() {
 
   return (
     <div>
-      <h1 className="page-title">Configurações</h1>
+      <PageHeader title="Configurações" subtitle="Preferências de notificação e personalização do programa." />
 
       <section className="card" style={{ marginTop: 'var(--sp-5)' }}>
         <div className="card-h">Preferências de notificação</div>

@@ -6,7 +6,7 @@
  */
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { Loading, Banner, useResource, errorMessage } from '../components.js';
+import { Loading, Banner, PageHeader, useResource, errorMessage } from '../components.js';
 import { TenantEditor } from './TenantEditor.js';
 
 interface TenantUsage {
@@ -44,7 +44,7 @@ export function PlatformConsole({ adminEmail, adminId }: { adminEmail: string; a
           </div>
         </header>
         <div className="content">
-          <h1 className="page-title">Tenants</h1>
+          <PageHeader title="Tenants" subtitle="Gerencie os clientes da plataforma e suas configurações." />
 
           <ProvisionForm onProvisioned={() => tenants.reload()} />
 

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { Loading, Banner, useResource, errorMessage, initials } from '../components.js';
+import { Loading, Banner, PageHeader, useResource, errorMessage, initials } from '../components.js';
 import { profileCompleteness } from '../../profile/completeness.js';
 
 interface Skill {
@@ -142,7 +142,7 @@ export function ProfileView({ displayName }: { displayName?: string }) {
 
   return (
     <div>
-      <h1 className="page-title">Perfil</h1>
+      <PageHeader title="Perfil" subtitle="Mantenha seu perfil completo — é assim que as conexões certas encontram você." />
       {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
 
       {/* Completeness */}

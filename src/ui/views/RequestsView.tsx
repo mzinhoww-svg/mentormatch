@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Loading, EmptyState, Banner, StatusTag, ConfirmDialog, useResource } from '../components.js';
+import { Loading, EmptyState, Banner, StatusTag, ConfirmDialog, PageHeader, useResource } from '../components.js';
 
 interface Req {
   id: string;
@@ -42,7 +42,7 @@ export function RequestsView() {
 
   return (
     <div>
-      <h1 className="page-title">Solicitações</h1>
+      <PageHeader title="Solicitações" subtitle="Os pedidos de mentoria que você enviou e recebeu." />
 
       <div className="card" style={{ marginTop: 'var(--sp-5)' }}>
         <div className="card-h">Recebidas (como mentor)</div>
@@ -71,7 +71,7 @@ export function RequestsView() {
       <div className="card" style={{ marginTop: 'var(--sp-4)' }}>
         <div className="card-h">Enviadas (como mentorado)</div>
         {data.asMentee.length === 0 ? (
-          <EmptyState title="Nenhuma solicitação enviada" hint="Encontre um mentor no diretório e solicite uma mentoria." />
+          <EmptyState title="Nenhuma solicitação enviada" hint="Encontre um mentor no diretório e solicite uma mentoria." action={{ label: 'Encontrar um mentor', href: '/app/mentors' }} />
         ) : (
           data.asMentee.map((r) => (
             <div className="row-item" key={r.id} style={{ flexWrap: 'wrap' }}>
