@@ -162,6 +162,12 @@ a { color: inherit; }
 .page-title { font-size: clamp(26px, 3vw, 34px); font-weight: 700; letter-spacing: -0.025em; }
 .page-head { margin-bottom: var(--sp-6); }
 .page-head .eyebrow { display: block; margin-bottom: 8px; }
+.page-sub { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 8px 0 0; max-width: 56ch; }
+
+/* input with a leading icon (e.g. search) */
+.input-icon { position: relative; }
+.input-icon > svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.input-icon .input { padding-left: 40px; }
 
 /* =====================================================================
    Cards, grids, stats, lists
@@ -197,7 +203,8 @@ a.card:hover .stat-v { color: var(--brand-primary); }
 .row-item:last-child { border-bottom: none; padding-bottom: 0; }
 .av {
   width: 40px; height: 40px; border-radius: var(--r-pill);
-  background: var(--brand-secondary); color: var(--accent-ink-2); display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--brand-secondary), color-mix(in srgb, var(--brand-primary) 60%, var(--brand-secondary)));
+  color: var(--accent-ink-2); display: grid; place-items: center;
   font-weight: 700; font-size: 14px; flex-shrink: 0; letter-spacing: -0.01em;
 }
 
@@ -209,6 +216,12 @@ a.card:hover .stat-v { color: var(--brand-primary); }
 .tag-ember { background: var(--brasa-100); color: var(--brasa-700); }
 .tag-green { background: var(--jade-100); color: var(--jade-700); }
 .tag-gray { background: var(--argila-200); color: var(--ink-2); }
+/* On-brand skill chip (tints with the tenant's primary color). */
+.tag-skill {
+  background: color-mix(in srgb, var(--brand-primary) 10%, #fff);
+  color: color-mix(in srgb, var(--brand-primary) 72%, var(--ink));
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 22%, transparent);
+}
 
 /* =====================================================================
    States: empty / loading / banner
@@ -300,18 +313,31 @@ a.card:hover .stat-v { color: var(--brand-primary); }
 .av-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
 .av-dot.on { background: var(--success); }
 .av-dot.off { background: var(--line-strong); }
-.mentor-status { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
-.mentor-status.on { color: var(--success); }
-.mentor-status.off { color: var(--muted); }
+.mentor-status {
+  display: inline-flex; align-items: center; gap: 7px; width: fit-content;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 4px 11px 4px 9px; border-radius: var(--r-pill); font-weight: 500;
+}
+.mentor-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.mentor-status.on { color: var(--success); background: color-mix(in srgb, var(--success) 13%, #fff); }
+.mentor-status.on::before { animation: mm-pulse 2.4s ease-out infinite; }
+.mentor-status.off { color: var(--muted); background: var(--paper-2); }
+@keyframes mm-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .mentor-status.on::before { animation: none; } }
 
 /* clickable stat affordance */
 .stat-go { font-family: var(--mono); font-size: 11px; color: var(--brand-primary); margin-top: 10px; display: inline-flex; gap: 4px; align-items: center; }
 a.card:hover .stat-go { gap: 8px; }
 
 /* skill filter chips */
-.skill-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-3); }
-.skill-filter button { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; padding: 5px 12px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2); cursor: pointer; transition: all var(--dur-1); }
-.skill-filter button.on { background: var(--brand-primary); color: #fff; border-color: transparent; }
+.skill-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--sp-4); }
+.skill-filter button { font-family: var(--sans); font-weight: 600; font-size: 12.5px; letter-spacing: 0; padding: 6px 14px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: #fff; color: var(--ink-2); cursor: pointer; transition: all var(--dur-1) var(--ease-out); }
+.skill-filter button:hover { border-color: var(--brand-primary); color: var(--brand-primary); transform: translateY(-1px); }
+.skill-filter button.on { background: var(--brand-primary); color: var(--accent-ink); border-color: transparent; box-shadow: var(--sh-1); }
 
 /* skeleton */
 @keyframes mm-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
@@ -340,8 +366,22 @@ a.card:hover .stat-go { gap: 8px; }
 /* =====================================================================
    Expandable mentor card + detail panel (audit follow-up)
    ===================================================================== */
-.mentor-card { cursor: pointer; }
-.mentor-card-head { display: flex; align-items: center; gap: 10px; }
+.mentor-card {
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1), border-color var(--dur-1);
+}
+/* Brand accent rail, revealed on hover/expand. */
+.mentor-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(var(--brand-primary), var(--brand-secondary));
+  opacity: 0; transition: opacity var(--dur-1) var(--ease-out);
+}
+.mentor-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: color-mix(in srgb, var(--brand-primary) 30%, var(--line-strong)); }
+.mentor-card:hover::before, .mentor-card[aria-expanded="true"]::before { opacity: 1; }
+.mentor-card:focus-visible { outline: none; border-color: var(--brand-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 18%, transparent); }
+.mentor-card .av { width: 48px; height: 48px; font-size: 16px; }
+.mentor-card > .btn { width: 100%; }
+.mentor-card-head { display: flex; align-items: center; gap: 12px; }
 .mentor-card .chev { margin-left: auto; color: var(--muted); transition: transform var(--dur-2) var(--ease-out); flex-shrink: 0; }
 .mentor-card[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .mentor-detail {
