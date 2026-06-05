@@ -36,7 +36,11 @@
 
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
   --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
-  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
+  /* The mid/large surface radii follow the tenant's --brand-radius when set
+     (white-label "roundness"), falling back to the kit scale otherwise. So a
+     tenant's DESIGN.md border radius reaches cards, inputs, banners, dialogs —
+     not just buttons. --r-sm (fine details) and --r-pill (chips) stay fixed. */
+  --r-sm: 6px; --r-md: var(--brand-radius, 10px); --r-lg: var(--brand-radius, 16px); --r-xl: 24px; --r-pill: 999px;
   --ease-flow: cubic-bezier(0.65, 0.05, 0.2, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-1: 180ms; --dur-2: 320ms;
