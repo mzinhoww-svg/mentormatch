@@ -147,6 +147,13 @@ a { color: inherit; }
 .topbar-bell-count { position: absolute; top: -2px; right: -4px; padding: 1px 6px; font-size: 10px; line-height: 1.4; }
 .content { padding: var(--sp-7); max-width: 1180px; width: 100%; }
 
+/* sidebar toggle: collapse on web, open the drawer on mobile */
+.nav-toggle { display: inline-flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--ink-2); cursor: pointer; padding: 6px; border-radius: var(--r-sm); }
+.nav-toggle:hover { color: var(--ink); background: rgba(20,16,13,.05); }
+.app-shell.nav-collapsed { grid-template-columns: 1fr; }
+.app-shell.nav-collapsed .side { display: none; }
+.nav-backdrop { display: none; }
+
 /* page header */
 .page-title { font-size: clamp(26px, 3vw, 34px); font-weight: 700; letter-spacing: -0.025em; }
 .page-head { margin-bottom: var(--sp-6); }
@@ -243,11 +250,18 @@ a.card:hover .stat-v { color: var(--brand-primary); }
 .auth-card { width: 100%; max-width: 410px; padding: var(--sp-7); box-shadow: var(--sh-2); }
 
 @media (max-width: 860px) {
-  .app-shell { grid-template-columns: 1fr; }
-  .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
-  .side::after { display: none; }
-  .side-nav { flex-direction: row; flex-wrap: wrap; }
-  .side-user { margin: 0; border-top: none; padding-top: 0; flex-direction: row; align-items: center; }
+  /* The sidebar becomes an off-canvas drawer (opened by the ☰ toggle), so it no
+     longer duplicates the bottom nav. */
+  .app-shell, .app-shell.nav-collapsed { grid-template-columns: 1fr; }
+  .side {
+    position: fixed; top: 0; left: 0; height: 100vh; width: min(280px, 82vw);
+    transform: translateX(-100%); transition: transform var(--dur-2) var(--ease-out);
+    z-index: 60; overflow-y: auto; box-shadow: var(--sh-3);
+  }
+  .app-shell.nav-collapsed .side { display: flex; }
+  .app-shell.nav-drawer-open .side { transform: translateX(0); }
+  .nav-backdrop { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(20,16,13,.45); border: none; cursor: pointer; }
+  .content { padding-bottom: 84px; }
   .content, .topbar { padding-left: var(--sp-4); padding-right: var(--sp-4); }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
