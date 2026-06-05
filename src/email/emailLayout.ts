@@ -35,12 +35,22 @@ const PAPER = '#FBF7F0';
 const CARD = '#FFFFFF';
 const LINE = '#E2D6C4';
 
+/** The platform name, shown as a co-brand so recipients recognize the sender
+ *  (a tenant logo alone can look like a phishing attempt). */
+const PLATFORM_NAME = 'MentorMatch';
+
 export function renderBrandedEmail(input: BrandedEmailInput): { html: string; text: string } {
   const { brand, heading, paragraphs, button, footerNote } = input;
 
-  const header = brand.logoUrl
+  // Co-branded header: the tenant's logo/name on the left, the platform name on
+  // the right — so the message is clearly "<tenant> via MentorMatch".
+  const tenantMark = brand.logoUrl
     ? `<img src="${esc(brand.logoUrl)}" alt="${esc(brand.tenantName)}" height="34" style="height:34px;max-height:34px;border:0;display:block;" />`
     : `<span style="font-size:18px;font-weight:700;color:${INK};letter-spacing:-0.01em;">${esc(brand.tenantName)}</span>`;
+  const header = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td align="left" style="vertical-align:middle;">${tenantMark}</td>
+      <td align="right" style="vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${MUTED};letter-spacing:.02em;">via <span style="color:${INK};font-weight:700;">${PLATFORM_NAME}</span></td>
+    </tr></table>`;
 
   const paras = paragraphs
     .map(
@@ -83,7 +93,10 @@ export function renderBrandedEmail(input: BrandedEmailInput): { html: string; te
         </td></tr>
         <tr><td style="padding:22px 28px 26px;">
           <hr style="border:0;border-top:1px solid ${LINE};margin:0 0 14px;" />
-          <p style="margin:0;font-size:12px;color:${MUTED};">— ${esc(brand.tenantName)} · Passe adiante.</p>
+          <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:${MUTED};">${esc(
+            brand.tenantName,
+          )} usa o ${PLATFORM_NAME} — plataforma de mentoria corporativa — para gerir seu programa. Você recebeu este e-mail porque há uma conta associada ao seu endereço neste programa.</p>
+          <p style="margin:0;font-size:12px;color:${MUTED};">— ${esc(brand.tenantName)} · via ${PLATFORM_NAME} · Passe adiante.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -91,13 +104,16 @@ export function renderBrandedEmail(input: BrandedEmailInput): { html: string; te
 </body></html>`;
 
   const text = [
+    `${brand.tenantName} · via ${PLATFORM_NAME}`,
+    '',
     heading,
     '',
     ...paragraphs,
     ...(button ? ['', `${button.label}: ${button.url}`] : []),
     ...(footerNote ? ['', footerNote] : []),
     '',
-    `— ${brand.tenantName} · Passe adiante.`,
+    `${brand.tenantName} usa o ${PLATFORM_NAME} — plataforma de mentoria corporativa. Você recebeu este e-mail porque há uma conta associada ao seu endereço.`,
+    `— ${brand.tenantName} · via ${PLATFORM_NAME} · Passe adiante.`,
   ].join('\n');
 
   return { html, text };

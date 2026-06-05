@@ -27,14 +27,18 @@ describe('renderBrandedEmail', () => {
     expect(html).toContain('https://x.test/set?token=abc');
     expect(html).toContain('Definir');
     expect(html).toContain('#2F8F2F'); // CTA uses the brand color
-    expect(html).toContain('Acme Inc · Passe adiante.');
+    // Co-branded with the platform + a context line (anti-phishing).
+    expect(html).toContain('via <span');
+    expect(html).toContain('MentorMatch');
+    expect(html).toContain('plataforma de mentoria corporativa');
+    expect(html).toContain('Passe adiante.');
 
     // Text fallback
     expect(text).toContain('Defina sua senha');
     expect(text).toContain('Crie sua senha.');
     expect(text).toContain('Definir: https://x.test/set?token=abc');
     expect(text).toContain('Ignore se não foi você.');
-    expect(text).toContain('— Acme Inc · Passe adiante.');
+    expect(text).toContain('via MentorMatch · Passe adiante.');
   });
 
   it('shows the logo when present, else the tenant name', () => {

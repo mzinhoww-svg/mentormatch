@@ -55,6 +55,16 @@ export function AppShell({
   const pathname = usePathname() ?? '/app';
   const items = navForRole(role);
   const active = activeHref(pathname);
+  // Web: collapse the sidebar. Mobile: open it as an off-canvas drawer. One ☰
+  // toggle drives the right one based on viewport.
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  function toggleNav() {
+    if (typeof window !== 'undefined' && window.innerWidth <= 860) setDrawerOpen((o) => !o);
+    else setCollapsed((c) => !c);
+  }
+  const closeDrawer = () => setDrawerOpen(false);
 
   async function logout() {
     await api.post('/api/auth/logout').catch(() => {});
@@ -62,15 +72,26 @@ export function AppShell({
   }
 
   return (
-    <div className="app-shell" style={brandingStyle(branding)}>
+    <div
+      className={`app-shell${collapsed ? ' nav-collapsed' : ''}${drawerOpen ? ' nav-drawer-open' : ''}`}
+      style={brandingStyle(branding)}
+    >
       <FontLoader fontFamily={branding.fontFamily} />
+      {drawerOpen ? (
+        <button className="nav-backdrop" aria-label="Fechar menu" onClick={closeDrawer} />
+      ) : null}
       <aside className="side">
         <div className="side-brand">
           <Lockup height={22} ink="var(--argila-50)" />
         </div>
         <nav className="side-nav" aria-label="Navegação principal">
           {items.map((it) => (
-            <a key={it.href} href={it.href} className={`nav-item${active === it.href ? ' active' : ''}`}>
+            <a
+              key={it.href}
+              href={it.href}
+              onClick={closeDrawer}
+              className={`nav-item${active === it.href ? ' active' : ''}`}
+            >
               {it.label}
             </a>
           ))}
@@ -90,6 +111,11 @@ export function AppShell({
       <div className="main">
         <header className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', minWidth: 0 }}>
+            <button className="nav-toggle" onClick={toggleNav} aria-label="Alternar menu" title="Menu">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden>
+                <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+              </svg>
+            </button>
             {branding.logoUrl ? (
               <img
                 src={branding.logoUrl}
