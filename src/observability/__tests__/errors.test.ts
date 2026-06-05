@@ -95,7 +95,7 @@ describe('normalization', () => {
 describe('error reporter hook (Sentry prep)', () => {
   afterEach(() => setErrorReporter(undefined));
 
-  it('is a no-op until a reporter is registered', () => {
+  it('logs via the default reporter and never throws', () => {
     expect(() => reportError(new Error('x'))).not.toThrow();
   });
 
