@@ -9,7 +9,8 @@ export type ProfileAction =
   | 'profile.updated'
   | 'profile.activated'
   | 'profile.deactivated'
-  | 'profile.availability_changed';
+  | 'profile.availability_changed'
+  | 'profile.onboarded';
 
 export async function recordProfileEvent(
   tenantId: string,
