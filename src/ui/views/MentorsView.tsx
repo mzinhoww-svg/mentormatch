@@ -75,14 +75,23 @@ export function MentorsView() {
 
   return (
     <div>
-      <h1 className="page-title">Mentores</h1>
+      <div className="page-head">
+        <span className="eyebrow">Descubra</span>
+        <h1 className="page-title">Mentores</h1>
+        <p className="page-sub">Conecte-se com quem já trilhou o caminho que você quer percorrer.</p>
+      </div>
       {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
 
       <form onSubmit={applyFilters} className="card" style={{ marginTop: 'var(--sp-4)' }}>
         <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="field" style={{ margin: 0, flex: 1, minWidth: 180 }}>
             <label htmlFor="q">Buscar</label>
-            <input id="q" className="input" placeholder="nome, cargo, bio…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <div className="input-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+              </svg>
+              <input id="q" className="input" placeholder="nome, cargo, bio…" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
           </div>
           <div className="field" style={{ margin: 0, minWidth: 160 }}>
             <label htmlFor="area">Área</label>
@@ -151,7 +160,7 @@ export function MentorsView() {
                   {m.offeredSkills.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 'var(--sp-3)' }}>
                       {m.offeredSkills.slice(0, 4).map((s) => (
-                        <span key={s} className="tag tag-green">{s}</span>
+                        <span key={s} className="tag tag-skill">{s}</span>
                       ))}
                       {m.offeredSkills.length > 4 ? (
                         <span className="tag tag-gray">+{m.offeredSkills.length - 4}</span>
@@ -179,7 +188,7 @@ export function MentorsView() {
                           <div className="detail-k">Todas as habilidades oferecidas</div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                             {m.offeredSkills.map((s) => (
-                              <span key={s} className="tag tag-green">{s}</span>
+                              <span key={s} className="tag tag-skill">{s}</span>
                             ))}
                           </div>
                         </div>
