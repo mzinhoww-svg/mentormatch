@@ -209,8 +209,9 @@ a.card:hover .stat-v { color: var(--brand-primary); }
   width: 40px; height: 40px; border-radius: var(--r-pill);
   background: linear-gradient(135deg, var(--brand-secondary), color-mix(in srgb, var(--brand-primary) 60%, var(--brand-secondary)));
   color: var(--accent-ink-2); display: grid; place-items: center;
-  font-weight: 700; font-size: 14px; flex-shrink: 0; letter-spacing: -0.01em;
+  font-weight: 700; font-size: 14px; flex-shrink: 0; letter-spacing: -0.01em; overflow: hidden;
 }
+.av img { width: 100%; height: 100%; object-fit: cover; }
 
 /* tags */
 .tag {

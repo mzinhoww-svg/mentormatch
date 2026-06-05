@@ -26,6 +26,7 @@ interface MentorSpec {
   offered?: string[];
   sought?: string[];
   contactEmail?: string;
+  avatar?: string;
 }
 
 async function createUser(tenantId: string, name: string, contactEmail?: string): Promise<string> {
@@ -47,7 +48,7 @@ async function createUser(tenantId: string, name: string, contactEmail?: string)
 
 async function setupMentor(tenantId: string, spec: MentorSpec): Promise<string> {
   const id = await createUser(tenantId, spec.name, spec.contactEmail);
-  await upsertProfile(tenantId, id, { title: spec.title, area: spec.area, seniority: spec.seniority });
+  await upsertProfile(tenantId, id, { title: spec.title, area: spec.area, seniority: spec.seniority, avatarUrl: spec.avatar ?? null });
   if (spec.active !== false) await activateProfile(tenantId, id);
   if (spec.available) await setMentorAvailable(tenantId, id, true);
   if (spec.paused) await setMentorPaused(tenantId, id, true);
@@ -169,5 +170,16 @@ describe.skipIf(!hasDb)('Mentor search (integration)', () => {
 
     const page2 = await searchMentors(a.id, { limit: 2, offset: 2 });
     expect(page2.items.map((i) => i.displayName)).toEqual(['Zoe']);
+  });
+
+  it('9. projects the mentor avatar (null when unset)', async () => {
+    const t = await createTenant({ slug: `mav${rand()}`, name: 'Avatar Co' });
+    await setupMentor(t.id, { name: 'Foto', available: true, avatar: 'https://blob/x.png' });
+    await setupMentor(t.id, { name: 'SemFoto', available: true });
+    const res = await searchMentors(t.id, {});
+    const foto = res.items.find((i) => i.displayName === 'Foto');
+    const sem = res.items.find((i) => i.displayName === 'SemFoto');
+    expect(foto?.avatarUrl).toBe('https://blob/x.png');
+    expect(sem?.avatarUrl).toBeNull();
   });
 });

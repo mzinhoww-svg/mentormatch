@@ -13,6 +13,7 @@ export interface MentorCard {
   area: string | null;
   seniority: string | null;
   bio: string | null;
+  avatarUrl: string | null;
   offeredSkills: string[];
   available: boolean;
 }
@@ -31,6 +32,7 @@ interface MentorRow {
   area: string | null;
   seniority: string | null;
   bio: string | null;
+  avatarUrl: string | null;
   offeredSkills: string[] | null;
 }
 
@@ -55,6 +57,7 @@ export async function searchMentors(
       `SELECT p.tenant_user_id AS "tenantUserId",
               tu.display_name  AS "displayName",
               p.title, p.area, p.seniority, p.bio,
+              p.avatar_url     AS "avatarUrl",
               COALESCE((
                 SELECT array_agg(s.name ORDER BY s.name)
                 FROM user_skill us JOIN skill s ON s.id = us.skill_id
@@ -74,6 +77,7 @@ export async function searchMentors(
       area: r.area,
       seniority: r.seniority,
       bio: r.bio,
+      avatarUrl: r.avatarUrl,
       offeredSkills: r.offeredSkills ?? [],
       available: true, // only effectively-available mentors are returned
     }));
