@@ -76,15 +76,17 @@ export function SessionsView() {
 
   function renderRow(s: Session) {
     return (
-      <div className="row-item" key={s.id} style={{ flexWrap: 'wrap' }}>
-        <StatusTag status={s.status} />
-        <span style={{ flex: 1, fontSize: 14, minWidth: 0 }}>
-          <b style={{ fontWeight: 600 }}>{mentorshipLabel(byId.get(s.mentorshipId))}</b>
-          {' · '}
-          {s.scheduledAt ? new Date(s.scheduledAt).toLocaleString('pt-BR') : 'sem data'}
+      <div className="tl-item" key={s.id}>
+        <span className={`tl-dot ${s.status}`} aria-hidden />
+        <div className="tl-when">
+          {s.scheduledAt ? new Date(s.scheduledAt).toLocaleString('pt-BR') : 'Sem data'}
+        </div>
+        <div className="tl-title">
+          {mentorshipLabel(byId.get(s.mentorshipId))}
           {s.objective ? ` · ${s.objective}` : ''}
-        </span>
-        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        </div>
+        <div className="tl-actions">
+          <StatusTag status={s.status} />
           {s.status === 'requested' ? (
             <button className="btn btn-primary btn-sm" onClick={() => act('/api/mentorship/sessions/confirm', s.id)}>Confirmar</button>
           ) : null}
@@ -95,7 +97,7 @@ export function SessionsView() {
             <button className="btn btn-ghost btn-sm" onClick={() => setConfirmCancel(s.id)}>Cancelar</button>
           ) : null}
           {s.status === 'completed' ? <RateSession sessionId={s.id} /> : null}
-        </span>
+        </div>
       </div>
     );
   }
@@ -142,13 +144,13 @@ export function SessionsView() {
             {upcoming.length > 0 ? (
               <>
                 <div className="session-group">Próximas</div>
-                {upcoming.map(renderRow)}
+                <div className="timeline">{upcoming.map(renderRow)}</div>
               </>
             ) : null}
             {past.length > 0 ? (
               <>
                 <div className="session-group">Histórico</div>
-                {past.map(renderRow)}
+                <div className="timeline">{past.map(renderRow)}</div>
               </>
             ) : null}
           </>

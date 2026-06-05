@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Loading, EmptyState, Banner, StatusTag, ConfirmDialog, PageHeader, useResource } from '../components.js';
+import { Loading, EmptyState, Banner, StatusTag, ConfirmDialog, PageHeader, useResource, initials } from '../components.js';
 
 interface Req {
   id: string;
@@ -50,15 +50,17 @@ export function RequestsView() {
           <EmptyState title="Nenhuma solicitação recebida" hint="Quando alguém solicitar sua mentoria, aparece aqui." />
         ) : (
           data.asMentor.map((r) => (
-            <div className="row-item" key={r.id} style={{ flexWrap: 'wrap' }}>
+            <div className="lrow" key={r.id}>
+              <span className="av">{initials(r.menteeName)}</span>
+              <div className="lrow-main">
+                <div className="lrow-name">{r.menteeName ?? 'Mentorado'}</div>
+                <div className="lrow-sub">
+                  {[r.skillName ? `busca ${r.skillName}` : null, when(r.createdAt)].filter(Boolean).join(' · ')}
+                </div>
+              </div>
               <StatusTag status={r.status} />
-              <span style={{ flex: 1, fontSize: 14, minWidth: 0 }}>
-                <b style={{ fontWeight: 600 }}>{r.menteeName ?? 'Mentorado'}</b>
-                {r.skillName ? <span className="muted"> · busca {r.skillName}</span> : null}
-                <span className="muted mono" style={{ fontSize: 12 }}> · {when(r.createdAt)}</span>
-              </span>
               {open(r) ? (
-                <span style={{ display: 'flex', gap: 8 }}>
+                <span className="lrow-actions">
                   <button className="btn btn-primary btn-sm" onClick={() => act('/api/mentorship/requests/accept', r.id)}>Aceitar</button>
                   <button className="btn btn-ghost btn-sm" onClick={() => setConfirmReject(r.id)}>Recusar</button>
                 </span>
@@ -74,15 +76,19 @@ export function RequestsView() {
           <EmptyState title="Nenhuma solicitação enviada" hint="Encontre um mentor no diretório e solicite uma mentoria." action={{ label: 'Encontrar um mentor', href: '/app/mentors' }} />
         ) : (
           data.asMentee.map((r) => (
-            <div className="row-item" key={r.id} style={{ flexWrap: 'wrap' }}>
+            <div className="lrow" key={r.id}>
+              <span className="av">{initials(r.mentorName)}</span>
+              <div className="lrow-main">
+                <div className="lrow-name">{r.mentorName ?? 'Mentor'}</div>
+                <div className="lrow-sub">
+                  {[r.skillName, when(r.createdAt)].filter(Boolean).join(' · ')}
+                </div>
+              </div>
               <StatusTag status={r.status} />
-              <span style={{ flex: 1, fontSize: 14, minWidth: 0 }}>
-                <b style={{ fontWeight: 600 }}>{r.mentorName ?? 'Mentor'}</b>
-                {r.skillName ? <span className="muted"> · {r.skillName}</span> : null}
-                <span className="muted mono" style={{ fontSize: 12 }}> · {when(r.createdAt)}</span>
-              </span>
               {open(r) ? (
-                <button className="btn btn-ghost btn-sm" onClick={() => act('/api/mentorship/requests/cancel', r.id)}>Cancelar</button>
+                <span className="lrow-actions">
+                  <button className="btn btn-ghost btn-sm" onClick={() => act('/api/mentorship/requests/cancel', r.id)}>Cancelar</button>
+                </span>
               ) : null}
             </div>
           ))
