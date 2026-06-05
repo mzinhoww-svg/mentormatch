@@ -1,6 +1,6 @@
 'use client';
 import { api } from '../api.js';
-import { Loading, EmptyState, Banner, useResource } from '../components.js';
+import { Loading, EmptyState, Banner, PageHeader, useResource } from '../components.js';
 import { notificationLabel } from '../../notifications/labels.js';
 
 interface Notification {
@@ -61,14 +61,18 @@ export function NotificationsView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <h1 className="page-title">Notificações</h1>
-        {data.unread > 0 ? <span className="count-pill" data-testid="unread-count">{data.unread}</span> : null}
-        <span style={{ flex: 1 }} />
-        {data.unread > 0 ? (
-          <button className="btn btn-ghost btn-sm" onClick={markAll}>Marcar todas como lidas</button>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Notificações"
+        subtitle="Tudo o que aconteceu nas suas mentorias, em um só lugar."
+        actions={
+          data.unread > 0 ? (
+            <>
+              <span className="count-pill" data-testid="unread-count">{data.unread}</span>
+              <button className="btn btn-ghost btn-sm" onClick={markAll}>Marcar todas como lidas</button>
+            </>
+          ) : null
+        }
+      />
 
       <div className="card" style={{ marginTop: 'var(--sp-5)' }}>
         {data.notifications.length === 0 ? (

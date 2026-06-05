@@ -1,7 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { Loading, EmptyState, Banner, ConfirmDialog, StarRating, StatusTag, useResource, errorMessage } from '../components.js';
+import { Loading, EmptyState, Banner, ConfirmDialog, StarRating, StatusTag, PageHeader, useResource, errorMessage } from '../components.js';
 
 interface Session {
   id: string;
@@ -102,7 +102,7 @@ export function SessionsView() {
 
   return (
     <div>
-      <h1 className="page-title">Sessões</h1>
+      <PageHeader title="Sessões" subtitle="Seus encontros agendados e o histórico de conversas." />
       {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
 
       <form className="card" style={{ marginTop: 'var(--sp-4)' }} onSubmit={create}>

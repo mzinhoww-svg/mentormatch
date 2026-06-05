@@ -5,21 +5,22 @@
 export interface NavItem {
   href: string;
   label: string;
+  icon: string;
   admin?: boolean;
 }
 
 export const ADMIN_ROLES = ['admin', 'program_manager'];
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/app', label: 'Início' },
-  { href: '/app/profile', label: 'Perfil' },
-  { href: '/app/mentors', label: 'Mentores' },
-  { href: '/app/requests', label: 'Solicitações' },
-  { href: '/app/mentorships', label: 'Mentorias' },
-  { href: '/app/sessions', label: 'Sessões' },
-  { href: '/app/notifications', label: 'Notificações' },
-  { href: '/app/admin', label: 'Admin', admin: true },
-  { href: '/app/settings', label: 'Configurações' },
+  { href: '/app', label: 'Início', icon: 'home' },
+  { href: '/app/profile', label: 'Perfil', icon: 'user' },
+  { href: '/app/mentors', label: 'Mentores', icon: 'compass' },
+  { href: '/app/requests', label: 'Solicitações', icon: 'inbox' },
+  { href: '/app/mentorships', label: 'Mentorias', icon: 'link' },
+  { href: '/app/sessions', label: 'Sessões', icon: 'calendar' },
+  { href: '/app/notifications', label: 'Notificações', icon: 'bell' },
+  { href: '/app/admin', label: 'Admin', icon: 'shield', admin: true },
+  { href: '/app/settings', label: 'Configurações', icon: 'settings' },
 ];
 
 export function isAdminRole(role: string | undefined | null): boolean {

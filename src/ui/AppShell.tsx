@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation';
 import { Lockup } from './Mark.js';
 import { api } from './api.js';
 import { navForRole, activeHref } from './nav.js';
+import { NavIcon } from './NavIcon.js';
 import { brandingStyle, type Branding } from './branding.js';
 import { initials } from './components.js';
 import { FontLoader } from './FontLoader.js';
@@ -92,7 +93,8 @@ export function AppShell({
               onClick={closeDrawer}
               className={`nav-item${active === it.href ? ' active' : ''}`}
             >
-              {it.label}
+              <NavIcon name={it.icon} />
+              <span>{it.label}</span>
             </a>
           ))}
         </nav>
@@ -136,7 +138,8 @@ export function AppShell({
       <nav className="mm-bottom-nav" aria-label="Navegação (mobile)">
         {items.slice(0, 5).map((it) => (
           <a key={it.href} href={it.href} className={active === it.href ? 'active' : ''}>
-            {it.label}
+            <NavIcon name={it.icon} size={21} />
+            <span>{it.label}</span>
           </a>
         ))}
       </nav>

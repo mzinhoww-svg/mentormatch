@@ -1,7 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api.js';
-import { SkeletonGrid, EmptyState, Banner, useResource, errorMessage, initials } from '../components.js';
+import { SkeletonGrid, EmptyState, Banner, PageHeader, useResource, errorMessage, initials } from '../components.js';
 
 interface MentorItem {
   tenantUserId: string;
@@ -75,11 +75,11 @@ export function MentorsView() {
 
   return (
     <div>
-      <div className="page-head">
-        <span className="eyebrow">Descubra</span>
-        <h1 className="page-title">Mentores</h1>
-        <p className="page-sub">Conecte-se com quem já trilhou o caminho que você quer percorrer.</p>
-      </div>
+      <PageHeader
+        eyebrow="Descubra"
+        title="Mentores"
+        subtitle="Conecte-se com quem já trilhou o caminho que você quer percorrer."
+      />
       {msg ? <Banner kind={msg.kind}>{msg.text}</Banner> : null}
 
       <form onSubmit={applyFilters} className="card" style={{ marginTop: 'var(--sp-4)' }}>
