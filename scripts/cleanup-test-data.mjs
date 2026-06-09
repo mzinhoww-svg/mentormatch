@@ -101,15 +101,31 @@ async function main() {
   const client = new Client(clientConfig(url));
   await client.connect();
   try {
-    // Resolve the requested slugs and measure the blast radius (user counts).
+    // Resolve the requested slugs, then measure the blast radius (user counts).
+    // tenant_user has FORCE ROW LEVEL SECURITY and the owner is NOBYPASSRLS, so a
+    // plain count returns 0 unless the transaction-local `app.tenant_id` GUC is
+    // set per tenant. (The DELETE below is unaffected — FK cascades bypass RLS.)
     const { rows } = await client.query(
-      `SELECT t.id, t.slug, t.name, t.created_at,
-              (SELECT count(*) FROM tenant_user u WHERE u.tenant_id = t.id) AS user_count
+      `SELECT t.id, t.slug, t.name, t.created_at
          FROM tenant t
         WHERE t.slug = ANY($1::text[])
         ORDER BY t.slug`,
       [args.slugs],
     );
+    if (rows.length > 0) {
+      await client.query('BEGIN');
+      try {
+        for (const r of rows) {
+          await client.query("SELECT set_config('app.tenant_id', $1, true)", [r.id]);
+          const c = await client.query('SELECT count(*)::int AS n FROM tenant_user WHERE tenant_id = $1', [r.id]);
+          r.user_count = c.rows[0].n;
+        }
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+      }
+    }
 
     const found = new Set(rows.map((r) => r.slug));
     const missing = args.slugs.filter((s) => !found.has(s));
